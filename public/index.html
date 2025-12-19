@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Halal Gelatin Supply Chain</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.7.1/dist/ethers.umd.min.js"></script>
+  <script src="js/contract-address.js"></script>
+  <script src="js/config.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: radial-gradient(circle at 20% 20%, rgba(124,58,237,0.16), transparent 25%),
+                  radial-gradient(circle at 80% 10%, rgba(56,189,248,0.16), transparent 25%),
+                  linear-gradient(135deg, #0f172a 0%, #111827 50%, #0b1220 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: #e5e7eb;
+      overflow-x: hidden;
+    }
+    .container { max-width: 1150px; margin: 0 auto; }
+    header { color: #e5e7eb; margin-bottom: 20px; }
+    h1 { font-size: 2.6em; margin-bottom: 4px; }
+    .subtitle { font-size: 1em; opacity: 0.85; }
+
+    /* --- Top Bar --- */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 16px;
+      padding: 14px 18px;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.45);
+      margin-bottom: 18px;
+      -webkit-backdrop-filter: blur(6px);
+      backdrop-filter: blur(6px);
+    }
+    .brand { display: flex; align-items: center; gap: 10px; }
+    .brand-badge {
+      width: 38px; height: 38px;
+      border-radius: 12px;
+      display: grid; place-items: center;
+      background: linear-gradient(135deg, #22d3ee, #6366f1);
+      color: #0b1220;
+      font-weight: 800;
+      box-shadow: 0 10px 26px rgba(99,102,241,0.45);
+    }
+    
+    /* Updated Pill Styles to support Button */
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 14px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: #cbd5e1;
+      font-weight: 600;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.02);
+      font-size: 1rem;
+    }
+    /* Specific styles for the clickable button version */
+    button.pill {
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.2s ease;
+    }
+    button.pill:hover {
+      background: rgba(255,255,255,0.15);
+      border-color: rgba(255,255,255,0.2);
+      color: #fff;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+    button.pill:active {
+      transform: translateY(0);
+    }
+
+    .pill .dot { width: 10px; height: 10px; border-radius: 50%; background: #34d399; box-shadow: 0 0 10px rgba(52,211,153,0.8); }
+    .pill .fox { font-size: 1.2em; }
+    .brand-name { font-weight: 800; letter-spacing: 0.2px; }
+    .brand-subtitle { font-size: 0.9em; opacity: 0.7; }
+    .topbar-right { display: flex; gap: 10px; align-items: center; }
+
+    .addr-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .addr-input {
+      width: 360px;
+      padding: 9px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: #e5e7eb;
+      font-weight: 600;
+      outline: none;
+    }
+    .addr-input::placeholder { color: #cbd5e1; opacity: 0.75; }
+
+    /* --- Panels --- */
+    .feature {
+      background: linear-gradient(135deg, rgba(99,102,241,0.2), rgba(14,165,233,0.12));
+      padding: 18px;
+      border-radius: 14px;
+      margin-bottom: 18px;
+      color: #e0e7ff;
+      border: 1px solid rgba(255,255,255,0.06);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+    }
+    .feature h3 { margin-bottom: 6px; }
+
+    .live-headline {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 14px;
+      box-shadow: 0 12px 32px rgba(0,0,0,0.4);
+      padding: 18px 20px;
+      margin-bottom: 18px;
+      transition: opacity 0.3s ease;
+    }
+    .live-headline h2 { color: #c7d2fe; font-size: 1.4em; margin-bottom: 6px; }
+    .live-headline p { color: #cbd5e1; }
+
+    /* --- Carousel --- */
+    .hex-stage {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 22px 0 26px;
+      gap: 14px;
+    }
+    .hex-carousel {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      max-width: 1400px;
+      padding: 12px 4px;
+      touch-action: pan-x;
+      cursor: grab;
+      overflow-x: auto;
+      overflow-y: hidden;
+      min-height: 420px;
+    }
+    .hex-carousel::-webkit-scrollbar { display: none; }
+    .hex-carousel:active { cursor: grabbing; }
+    
+    .hex-track {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 4px;
+      width: max-content; 
+    }
+    
+    .hex-card {
+      position: relative;
+      width: 520px;
+      flex: 0 0 520px;
+      max-width: 660px;
+      aspect-ratio: 5 / 4;
+      filter: drop-shadow(0 16px 36px rgba(0,0,0,0.4));
+      transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.4s ease, filter 0.4s ease;
+      opacity: 0.3;
+      transform: scale(0.92);
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    .hex-card.center {
+      opacity: 1;
+      transform: scale(1);
+      z-index: 2;
+      filter: drop-shadow(0 22px 48px rgba(0,0,0,0.48));
+    }
+    .hex-outline {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, #22d3ee, #8b5cf6, #6366f1);
+      clip-path: polygon(25% 5%, 75% 5%, 100% 50%, 75% 95%, 25% 95%, 0% 50%);
+      opacity: 0.9;
+    }
+    .hex-inner {
+      position: absolute;
+      inset: 12px;
+      background: rgba(15,23,42,0.95);
+      border: 1px solid rgba(255,255,255,0.08);
+      clip-path: polygon(25% 5%, 75% 5%, 100% 50%, 75% 95%, 25% 95%, 0% 50%);
+      padding: 38px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 14px;
+      text-align: center;
+    }
+    .hex-icon { font-size: 2.6em; }
+    .hex-title { color: #c7d2fe; font-size: 1.8em; font-weight: 750; }
+    .hex-text { color: #cbd5e1; line-height: 1.55; }
+    
+    .hex-link {
+      display: inline-block;
+      margin: 6px auto 0;
+      background: linear-gradient(135deg, #22d3ee 0%, #6366f1 50%, #a855f7 100%);
+      color: #0b1220;
+      padding: 12px 22px;
+      border-radius: 10px;
+      text-decoration: none;
+      font-weight: 800;
+      width: fit-content;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      box-shadow: 0 12px 26px rgba(99,102,241,0.4);
+      pointer-events: auto;
+    }
+    .hex-link:hover { transform: translateY(-2px); box-shadow: 0 16px 30px rgba(99,102,241,0.55); }
+
+    .nav-btn {
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
+      box-shadow: 0 14px 34px rgba(0,0,0,0.35);
+      color: #e0e7ff;
+      font-size: 1.2em;
+      cursor: pointer;
+      z-index: 10;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    }
+    .nav-btn:hover { transform: translateY(-2px); box-shadow: 0 18px 40px rgba(0,0,0,0.4); background: rgba(255,255,255,0.14); }
+
+    .footer {
+      text-align: center;
+      color: #cbd5e1;
+      margin-top: 30px;
+      opacity: 0.85;
+    }
+
+    @media (max-width: 720px) {
+      h1 { font-size: 2.4em; }
+      .hex-card { width: 90vw; flex: 0 0 90vw; }
+      .hex-inner { padding: 30px 24px; }
+      .hex-stage { gap: 12px; }
+      .brand-subtitle { display: none; }
+      .addr-input { width: 160px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="topbar">
+      <div class="brand">
+        <div class="brand-badge">HG</div>
+        <div>
+          <div class="brand-name">Halal Gelatin</div>
+          <div class="brand-subtitle">Secure Supply Chain</div>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <span class="pill" id="chainPill"><span class="dot"></span> Chain: Localhost</span>
+        <div class="addr-wrap">
+          <input id="contractAddressInput" class="addr-input" placeholder="Contract address (0x...)" />
+          <button id="setContractBtn" class="pill">Set</button>
+        </div>
+        <button id="connectWalletBtn" class="pill">
+          <span class="fox">🦊</span> <span id="walletText">Connect Wallet</span>
+        </button>
+      </div>
+    </div>
+
+    <header>
+      <h1>Blockchain Operations Console</h1>
+      <p class="subtitle">Navigate roles, connect wallet, and launch the right dashboard.</p>
+    </header>
+
+    <div class="feature">
+      <h3>✅ Halal Compliance Tracking</h3>
+      <p>Browse each role to see actions, then jump in with your connected wallet.</p>
+    </div>
+
+    <div class="live-headline">
+      <h2 id="currentTitle">Loading...</h2>
+      <p id="currentText">Please wait...</p>
+    </div>
+
+    <div class="hex-stage">
+      <button class="nav-btn" id="prevBtn" aria-label="Previous role">‹</button>
+
+      <div class="hex-carousel" id="hexCarousel">
+        <div class="hex-track" id="hexTrack"></div>
+      </div>
+
+      <button class="nav-btn" id="nextBtn" aria-label="Next role">›</button>
+    </div>
+
+    <div class="footer">
+      <p>Halal Gelatin Supply Chain Management System | Secured by Blockchain</p>
+    </div>
+  </div>
+  <script>
+    const roles = [
+      { key: 'admin', title: 'Admin Panel', text: 'Manage roles, grant access, and monitor participants across the chain.', link: 'admin.html', cta: 'Access Admin', icon: '👨‍💼' },
+      { key: 'producer', title: 'Producer (Farm)', text: 'Create batches at the source, set initial product names, and hand off to the factory.', link: 'producer.html', cta: 'Go to Producer', icon: '🌾' },
+      { key: 'authority', title: 'Halal Authority (JAKIM)', text: 'Review batches and attach halal certificates with traceable hashes.', link: 'authority.html', cta: 'Go to Authority', icon: '✔️' },
+      { key: 'distributor', title: 'Distributor (Factory)', text: 'Process gelatin, update status, and transfer custody to retailers.', link: 'distributor.html', cta: 'Go to Distributor', icon: '🏭' },
+      { key: 'retailer', title: 'Retailer', text: 'Finalize products, update readiness, and generate QR codes for consumers.', link: 'retailer.html', cta: 'Go to Retailer', icon: '🛍️' },
+      { key: 'track', title: 'Track Batch (Consumer)', text: 'Let consumers scan or enter a batch ID to see the complete journey.', link: 'track.html', cta: 'Track Batch', icon: '🔍' }
+    ];
+
+    const loopRoles = [...roles, ...roles, ...roles, ...roles, ...roles];
+
+    const currentTitle = document.getElementById('currentTitle');
+    const currentText = document.getElementById('currentText');
+    const carousel = document.getElementById('hexCarousel');
+    const track = document.getElementById('hexTrack');
+    
+    // Generate Cards
+    loopRoles.forEach((role, idx) => {
+      const card = document.createElement('div');
+      card.className = 'hex-card';
+      card.dataset.idx = idx;
+      card.innerHTML = `
+        <div class="hex-outline"></div>
+        <div class="hex-inner">
+          <div class="hex-icon">${role.icon}</div>
+          <div class="hex-title">${role.title}</div>
+          <div class="hex-text">${role.text}</div>
+          <a class="hex-link" href="${role.link}" draggable="false">${role.cta}</a>
+        </div>
+      `;
+      track.appendChild(card);
+    });
+
+    let cardWidth = 0;
+    let isDragging = false;
+    let startX = 0;
+    let startScrollLeft = 0;
+    let snapTimer = null;
+
+    function measure() {
+      const card = track.querySelector('.hex-card');
+      if (card) {
+        cardWidth = card.offsetWidth + 16; 
+      }
+    }
+
+    function updateActiveState() {
+      if (!cardWidth) return;
+      const centerLine = carousel.scrollLeft + (carousel.clientWidth / 2);
+      const cards = Array.from(track.children);
+      
+      let activeIdx = 0;
+      let minDist = Infinity;
+
+      // Find closest card to absolute center
+      cards.forEach((card, i) => {
+        const cardCenter = (i * cardWidth) + (cardWidth / 2);
+        const dist = Math.abs(centerLine - cardCenter);
+        
+        if (dist < minDist) {
+          minDist = dist;
+          activeIdx = i;
+        }
+      });
+
+      // Apply classes
+      cards.forEach((card, i) => {
+        if (i === activeIdx) card.classList.add('center');
+        else card.classList.remove('center');
+      });
+
+      // Update Text
+      const realRoleIndex = activeIdx % roles.length;
+      const role = roles[realRoleIndex];
+      if (role && currentTitle.textContent !== role.title) {
+        currentTitle.textContent = role.title;
+        currentText.textContent = role.text;
+      }
+    }
+
+    function normalizeScroll() {
+      if (!cardWidth) return;
+      const totalCards = loopRoles.length;
+      const currentIndex = Math.round(carousel.scrollLeft / cardWidth);
+      
+      // Infinite Loop Logic
+      if (currentIndex < roles.length) {
+        carousel.scrollTo({
+          left: carousel.scrollLeft + (roles.length * cardWidth),
+          behavior: 'auto'
+        });
+      } else if (currentIndex > totalCards - roles.length) {
+        carousel.scrollTo({
+          left: carousel.scrollLeft - (roles.length * cardWidth),
+          behavior: 'auto'
+        });
+      }
+    }
+
+    function snapToNearest() {
+      if (isDragging || !cardWidth) return;
+      
+      const center = carousel.scrollLeft + (carousel.clientWidth / 2);
+      // Determine index based on pure layout math
+      const rawIndex = (center / cardWidth) - 0.5; 
+      const targetIndex = Math.round(rawIndex);
+      const targetScroll = (targetIndex * cardWidth) + (cardWidth / 2) - (carousel.clientWidth / 2);
+
+      carousel.scrollTo({ left: targetScroll, behavior: 'smooth' });
+    }
+
+    function move(direction) {
+      if (!cardWidth) return;
+      const center = carousel.scrollLeft + (carousel.clientWidth / 2);
+      const currentIndex = Math.round((center / cardWidth) - 0.5);
+      const targetIndex = currentIndex + direction;
+      const targetScroll = (targetIndex * cardWidth) + (cardWidth / 2) - (carousel.clientWidth / 2);
+
+      carousel.scrollTo({ left: targetScroll, behavior: 'smooth' });
+    }
+
+    // --- Connect Wallet Logic ---
+    const connectWalletBtn = document.getElementById('connectWalletBtn');
+    const walletText = document.getElementById('walletText');
+
+    async function connectMetaMask() {
+      if (typeof window.ethereum !== 'undefined') {
+        try {
+          walletText.textContent = "Connecting..."; // Feedback
+          const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+          const account = accounts[0];
+          
+          // Show shortened address (e.g., 0x1234...5678)
+          const shortAddr = account.substring(0, 6) + "..." + account.substring(account.length - 4);
+          walletText.textContent = shortAddr;
+          
+          console.log('Connected:', accounts[0]);
+        } catch (error) {
+          console.error('User denied account access:', error);
+          walletText.textContent = "Connect Wallet";
+        }
+      } else {
+        alert('MetaMask is not installed. Please install it to use this feature.');
+      }
+    }
+
+    // Bind event to new top bar button
+    connectWalletBtn.addEventListener('click', connectMetaMask);
+
+    // --- Contract Address UI ---
+    const contractAddressInput = document.getElementById('contractAddressInput');
+    const setContractBtn = document.getElementById('setContractBtn');
+    const chainPill = document.getElementById('chainPill');
+
+    async function initContractAddressUi() {
+      if (!contractAddressInput || !setContractBtn) return;
+
+      try {
+        const addr = await window.getContractAddress();
+        contractAddressInput.value = addr;
+        if (chainPill) chainPill.title = `Contract: ${addr}`;
+      } catch {
+        // ignore
+      }
+
+      setContractBtn.addEventListener('click', () => {
+        try {
+          const saved = window.setContractAddress(contractAddressInput.value);
+          if (chainPill) chainPill.title = `Contract: ${saved}`;
+          const prev = setContractBtn.textContent;
+          setContractBtn.textContent = 'Saved';
+          setTimeout(() => {
+            setContractBtn.textContent = prev || 'Set';
+          }, 900);
+        } catch (e) {
+          alert(e?.message || String(e));
+        }
+      });
+    }
+
+    // --- Carousel Events ---
+    document.getElementById('prevBtn').onclick = () => move(-1);
+    document.getElementById('nextBtn').onclick = () => move(1);
+
+    carousel.addEventListener('scroll', () => {
+      updateActiveState();
+      if (!isDragging) {
+        clearTimeout(snapTimer);
+        normalizeScroll(); 
+        snapTimer = setTimeout(snapToNearest, 150);
+      }
+    });
+
+    const startDrag = (e) => {
+      isDragging = true;
+      startX = e.pageX || e.touches[0].pageX;
+      startScrollLeft = carousel.scrollLeft;
+      carousel.style.cursor = 'grabbing';
+      clearTimeout(snapTimer);
+    };
+
+    const doDrag = (e) => {
+      if (!isDragging) return;
+      e.preventDefault();
+      const x = e.pageX || e.touches[0].pageX;
+      const walk = (x - startX) * 1.5;
+      carousel.scrollLeft = startScrollLeft - walk;
+    };
+
+    const stopDrag = () => {
+      if (!isDragging) return;
+      isDragging = false;
+      carousel.style.cursor = 'grab';
+      snapToNearest();
+    };
+
+    carousel.addEventListener('mousedown', startDrag);
+    carousel.addEventListener('mousemove', doDrag);
+    carousel.addEventListener('mouseup', stopDrag);
+    carousel.addEventListener('mouseleave', stopDrag);
+
+    carousel.addEventListener('touchstart', startDrag);
+    carousel.addEventListener('touchmove', doDrag);
+    carousel.addEventListener('touchend', stopDrag);
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft') move(-1);
+      if (e.key === 'ArrowRight') move(1);
+    });
+
+    window.addEventListener('resize', () => {
+      measure();
+      snapToNearest();
+    });
+
+    window.addEventListener('load', () => {
+      measure();
+      const startIdx = roles.length * 2; 
+      const startPos = (startIdx * cardWidth) + (cardWidth / 2) - (carousel.clientWidth / 2);
+      carousel.scrollTo({ left: startPos, behavior: 'auto' });
+      updateActiveState();
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initContractAddressUi();
+    });
+  </script>
+</body>
+</html>

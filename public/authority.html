@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Authority Dashboard - Halal Gelatin</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.7.1/dist/ethers.umd.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f5f5f5;
+      padding: 20px;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    header {
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+      color: white;
+      padding: 30px;
+      border-radius: 12px;
+      margin-bottom: 30px;
+    }
+    h1 { font-size: 2em; margin-bottom: 10px; }
+    .section {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    h2 {
+      color: #f59e0b;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #f59e0b;
+      padding-bottom: 10px;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #333;
+    }
+    input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 1em;
+    }
+    input:focus {
+      outline: none;
+      border-color: #f59e0b;
+      box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
+    }
+    button {
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+      color: white;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: opacity 0.3s;
+    }
+    button:hover { opacity: 0.9; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .status {
+      padding: 15px;
+      border-radius: 6px;
+      margin-top: 10px;
+      display: none;
+    }
+    .status.success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+      display: block;
+    }
+    .status.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+      display: block;
+    }
+    .back-link {
+      display: inline-block;
+      margin-bottom: 20px;
+      color: #f59e0b;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .back-link:hover { text-decoration: underline; }
+    .batch-item {
+      background: #f9fafb;
+      padding: 15px;
+      border-radius: 6px;
+      margin-bottom: 10px;
+      border-left: 4px solid #f59e0b;
+    }
+    .batch-details {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+      <a href="index.html" class="back-link">← Back to Main Menu</a>
+    <header>
+      <h1>✔️ Halal Authority Dashboard</h1>
+      <p>Verify and certify batches according to halal standards</p>
+    </header>
+
+    <div class="section">
+      <h2>Certify Batch</h2>
+      <div class="form-group">
+        <label>Batch ID</label>
+        <input type="text" id="batchId" placeholder="GEL-2025-001">
+      </div>
+      <div class="form-group">
+        <label>Certificate Hash (IPFS or URL)</label>
+        <input type="text" id="certHash" placeholder="QmXxxx... or https://...">
+      </div>
+      <button id="certifyBtn">Certify Batch</button>
+      <div class="status" id="certifyStatus"></div>
+    </div>
+
+    <div class="section">
+      <h2>View Batch</h2>
+      <div class="form-group">
+        <label>Batch ID</label>
+        <input type="text" id="viewBatchId" placeholder="GEL-2025-001">
+      </div>
+      <button id="viewBatchBtn">View Batch Details</button>
+      <div class="status" id="viewStatus"></div>
+      <div id="batchDetails" class="batch-details"></div>
+    </div>
+  </div>
+
+  <script src="js/contract-address.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/abi.js"></script>
+  <script>
+    let contract;
+    let signer;
+    let provider;
+
+    // Wire up buttons after DOM is ready
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('certifyBtn')?.addEventListener('click', connectAndCertify);
+      document.getElementById('viewBatchBtn')?.addEventListener('click', connectAndViewBatch);
+    });
+
+    async function ensureContract(statusTarget) {
+      if (!window.ethereum) {
+        showStatus('Wallet not found. Install MetaMask.', 'error', statusTarget);
+        return false;
+      }
+      try {
+        provider = provider || new ethers.BrowserProvider(window.ethereum);
+        
+        // Check if already connected without prompting
+        const existingAccounts = await window.ethereum.request({ method: 'eth_accounts' });
+        let accounts = existingAccounts;
+        
+        // Only request if not already connected
+        if (accounts.length === 0) {
+          accounts = await provider.send('eth_requestAccounts', []);
+        }
+        
+        signer = await provider.getSigner();
+        contract = new ethers.Contract(await getContractAddress(), CONTRACT_ABI, signer);
+        return true;
+      } catch (error) {
+        showStatus('Error connecting wallet: ' + error.message, 'error', statusTarget);
+        return false;
+      }
+    }
+
+    async function connectAndCertify() {
+      try {
+        if (!contract && !(await ensureContract('certifyStatus'))) return;
+
+        const batchId = document.getElementById('batchId').value;
+        const certHash = document.getElementById('certHash').value;
+
+        if (!batchId || !certHash) {
+          showStatus('Please fill in all fields', 'error', 'certifyStatus');
+          return;
+        }
+
+        const tx = await contract.setHalalCertificate(batchId, certHash);
+        showStatus('Certifying batch... ' + tx.hash, 'success', 'certifyStatus');
+        await tx.wait();
+        showStatus('✅ Batch certified with hash: ' + certHash, 'success', 'certifyStatus');
+        document.getElementById('batchId').value = '';
+        document.getElementById('certHash').value = '';
+      } catch (error) {
+        showStatus('Error: ' + error.message, 'error', 'certifyStatus');
+      }
+    }
+
+    async function connectAndViewBatch() {
+      try {
+        if (!contract) {
+          const readProvider = new ethers.JsonRpcProvider('http://localhost:8545');
+          contract = new ethers.Contract(await getContractAddress(), CONTRACT_ABI, readProvider);
+        }
+
+        const batchId = document.getElementById('viewBatchId').value;
+        if (!batchId) {
+          showStatus('Please enter a batch ID', 'error', 'viewStatus');
+          return;
+        }
+
+        const batch = await contract.getBatch(batchId);
+        displayBatchDetails(batch);
+      } catch (error) {
+        showStatus('Error: ' + error.message, 'error', 'viewStatus');
+      }
+    }
+
+    function displayBatchDetails(batch) {
+      const html = `
+        <div class="batch-item">
+          <strong>Batch ID:</strong> ${batch.batchId}<br>
+          <strong>Product:</strong> ${batch.productName}<br>
+          <strong>Status:</strong> ${batch.status}<br>
+          <strong>Certified:</strong> ${batch.isCertified ? '✅ Yes' : '❌ No'}<br>
+          <strong>Cert Hash:</strong> ${batch.halalCertHash || 'Not certified yet'}<br>
+          <strong>Producer:</strong> ${batch.producer}<br>
+          <strong>Current Owner:</strong> ${batch.currentOwner}<br>
+          <strong>Created:</strong> ${new Date(Number(batch.createdAt) * 1000).toLocaleString()}
+        </div>
+      `;
+      document.getElementById('batchDetails').innerHTML = html;
+    }
+
+    function showStatus(message, type, elementId) {
+      const el = document.getElementById(elementId);
+      el.textContent = message;
+      el.className = 'status ' + type;
+    }
+
+    // Force wallet connection on page load
+    document.addEventListener('DOMContentLoaded', () => {
+      ensureContract('certifyStatus');
+    });
+  </script>
+</body>
+</html>

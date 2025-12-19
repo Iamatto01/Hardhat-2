@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel - Halal Gelatin Supply Chain</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.7.1/dist/ethers.umd.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f5f5f5;
+      padding: 20px;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 30px;
+      border-radius: 12px;
+      margin-bottom: 30px;
+    }
+    h1 { font-size: 2em; margin-bottom: 10px; }
+    .section {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    h2 {
+      color: #667eea;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #667eea;
+      padding-bottom: 10px;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #333;
+    }
+    input, select {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 1em;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: opacity 0.3s;
+    }
+    button:hover { opacity: 0.9; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .status {
+      padding: 15px;
+      border-radius: 6px;
+      margin-top: 10px;
+      display: none;
+    }
+    .status.success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+      display: block;
+    }
+    .status.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+      display: block;
+    }
+    .address-display {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 6px;
+      margin: 10px 0;
+      font-family: monospace;
+      word-break: break-all;
+    }
+    .back-link {
+      display: inline-block;
+      margin-bottom: 20px;
+      color: #667eea;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .back-link:hover { text-decoration: underline; }
+    .margin-top { margin-top: 15px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="index.html" class="back-link">← Back to Main Menu</a>
+
+    <header>
+      <h1>👨‍💼 Admin Panel</h1>
+      <p>Manage roles and grant access to supply chain participants</p>
+    </header>
+
+    <div class="section">
+      <h2>Contract Information</h2>
+      <p>Contract Address:</p>
+      <div class="address-display" id="contractAddress">Loading...</div>
+      <p class="margin-top">Connected Account:</p>
+      <div class="address-display" id="connectedAccount">Not connected</div>
+      <button onclick="connectWallet('connectionStatus')">Connect Wallet</button>
+      <div class="status" id="connectionStatus"></div>
+    </div>
+
+    <div class="section">
+      <h2>Grant Producer Role</h2>
+      <div class="form-group">
+        <label>Wallet Address</label>
+        <input type="text" id="producerAddress" placeholder="0x...">
+      </div>
+      <button onclick="addProducer()">Grant Producer Role</button>
+      <div class="status" id="producerStatus"></div>
+    </div>
+
+    <div class="section">
+      <h2>Grant Halal Authority Role</h2>
+      <div class="form-group">
+        <label>Wallet Address</label>
+        <input type="text" id="authorityAddress" placeholder="0x...">
+      </div>
+      <button onclick="addAuthority()">Grant Authority Role</button>
+      <div class="status" id="authorityStatus"></div>
+    </div>
+
+    <div class="section">
+      <h2>Grant Distributor Role</h2>
+      <div class="form-group">
+        <label>Wallet Address</label>
+        <input type="text" id="distributorAddress" placeholder="0x...">
+      </div>
+      <button onclick="addDistributor()">Grant Distributor Role</button>
+      <div class="status" id="distributorStatus"></div>
+    </div>
+
+    <div class="section">
+      <h2>Grant Retailer Role</h2>
+      <div class="form-group">
+        <label>Wallet Address</label>
+        <input type="text" id="retailerAddress" placeholder="0x...">
+      </div>
+      <button onclick="addRetailer()">Grant Retailer Role</button>
+      <div class="status" id="retailerStatus"></div>
+    </div>
+  </div>
+
+  <script src="js/contract-address.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/abi.js"></script>
+  <script>
+    let contract;
+    let signer;
+    let provider;
+
+    async function initPage() {
+      const contractAddress = await getContractAddress();
+      document.getElementById('contractAddress').textContent = contractAddress;
+    }
+
+    async function connectWallet(statusTarget = 'connectionStatus') {
+      if (!window.ethereum) {
+        showStatus('❌ MetaMask not installed. Please install MetaMask extension.', 'error', statusTarget);
+        return false;
+      }
+      try {
+        provider = provider || new ethers.BrowserProvider(window.ethereum);
+        
+        // Check if already connected without prompting
+        const existingAccounts = await window.ethereum.request({ method: 'eth_accounts' });
+        let accounts = existingAccounts;
+        
+        // Only request if not already connected
+        if (accounts.length === 0) {
+          accounts = await provider.send('eth_requestAccounts', []);
+        }
+        
+        signer = await provider.getSigner();
+        contract = new ethers.Contract(await getContractAddress(), CONTRACT_ABI, signer);
+        document.getElementById('connectedAccount').textContent = accounts[0];
+        showStatus('✅ Wallet connected successfully!', 'success', statusTarget);
+        return true;
+      } catch (error) {
+        if (error.code === 4001) {
+          showStatus('❌ User denied account access', 'error', statusTarget);
+        } else {
+          showStatus('❌ Error: ' + error.message, 'error', statusTarget);
+        }
+        return false;
+      }
+    }
+
+    async function addProducer() {
+      if (!contract && !(await connectWallet('producerStatus'))) return;
+
+      const address = document.getElementById('producerAddress').value;
+      if (!ethers.isAddress(address)) {
+        showStatus('Invalid address', 'error', 'producerStatus');
+        return;
+      }
+      try {
+        const tx = await contract.addProducer(address);
+        showStatus('Transaction sent: ' + tx.hash, 'success', 'producerStatus');
+        await tx.wait();
+        showStatus('✅ Producer role granted to ' + address, 'success', 'producerStatus');
+        document.getElementById('producerAddress').value = '';
+      } catch (error) {
+        showStatus('Error: ' + error.message, 'error', 'producerStatus');
+      }
+    }
+
+    async function addAuthority() {
+      if (!contract && !(await connectWallet('authorityStatus'))) return;
+
+      const address = document.getElementById('authorityAddress').value;
+      if (!ethers.isAddress(address)) {
+        showStatus('Invalid address', 'error', 'authorityStatus');
+        return;
+      }
+      try {
+        const tx = await contract.addAuthority(address);
+        showStatus('Transaction sent: ' + tx.hash, 'success', 'authorityStatus');
+        await tx.wait();
+        showStatus('✅ Authority role granted to ' + address, 'success', 'authorityStatus');
+        document.getElementById('authorityAddress').value = '';
+      } catch (error) {
+        showStatus('Error: ' + error.message, 'error', 'authorityStatus');
+      }
+    }
+
+    async function addDistributor() {
+      if (!contract && !(await connectWallet('distributorStatus'))) return;
+
+      const address = document.getElementById('distributorAddress').value;
+      if (!ethers.isAddress(address)) {
+        showStatus('Invalid address', 'error', 'distributorStatus');
+        return;
+      }
+      try {
+        const tx = await contract.addDistributor(address);
+        showStatus('Transaction sent: ' + tx.hash, 'success', 'distributorStatus');
+        await tx.wait();
+        showStatus('✅ Distributor role granted to ' + address, 'success', 'distributorStatus');
+        document.getElementById('distributorAddress').value = '';
+      } catch (error) {
+        showStatus('Error: ' + error.message, 'error', 'distributorStatus');
+      }
+    }
+
+    async function addRetailer() {
+      if (!contract && !(await connectWallet('retailerStatus'))) return;
+
+      const address = document.getElementById('retailerAddress').value;
+      if (!ethers.isAddress(address)) {
+        showStatus('Invalid address', 'error', 'retailerStatus');
+        return;
+      }
+      try {
+        const tx = await contract.addRetailer(address);
+        showStatus('Transaction sent: ' + tx.hash, 'success', 'retailerStatus');
+        await tx.wait();
+        showStatus('✅ Retailer role granted to ' + address, 'success', 'retailerStatus');
+        document.getElementById('retailerAddress').value = '';
+      } catch (error) {
+        showStatus('Error: ' + error.message, 'error', 'retailerStatus');
+      }
+    }
+
+    function showStatus(message, type, elementId) {
+      const el = document.getElementById(elementId);
+      el.textContent = message;
+      el.className = 'status ' + type;
+    }
+
+    // Initialize when DOM is ready and prompt wallet connection
+    document.addEventListener('DOMContentLoaded', () => {
+      initPage();
+      connectWallet('connectionStatus');
+    });
+  </script>
+</body>
+</html>

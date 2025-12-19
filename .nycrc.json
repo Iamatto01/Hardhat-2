@@ -1,0 +1,9 @@
+{
+  "all": true,
+  "extension": [".ts"],
+  "include": ["test/**/*.ts"],
+  "exclude": ["**/*.d.ts"],
+  "reporter": ["text", "html"],
+  "report-dir": "coverage",
+  "temp-dir": ".nyc_output"
+}
