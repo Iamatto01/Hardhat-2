@@ -1,0 +1,6 @@
+{
+  "require": ["tsx/cjs"],
+  "spec": ["test/**/*.ts"],
+  "timeout": 40000,
+  "ui": "bdd"
+}

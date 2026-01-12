@@ -1,2 +1,2 @@
 // Auto-updated by scripts/deploy.ts
-window.CONTRACT_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+window.CONTRACT_ADDRESS = "0x5743a88f44b4b42Eb1f19B6475bdb396E9a1045B";

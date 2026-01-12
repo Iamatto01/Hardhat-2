@@ -1,10 +1,8 @@
 import { expect } from "chai";
 import { network } from "hardhat";
+import "@nomicfoundation/hardhat-ethers-chai-matchers";
 
-import "@nomicfoundation/hardhat-ethers";
-import "@nomicfoundation/hardhat-toolbox-mocha-ethers";
-
-const { ethers } = await network.connect();
+let ethers: any;
 
 function makeBatchId(): string {
   // Keep it deterministic-ish and unique per run
@@ -12,16 +10,29 @@ function makeBatchId(): string {
 }
 
 describe("HalalGelatinSupplyChain", function () {
-  it("runs the full halal gelatin flow end-to-end", async function () {
-    const [admin, producer, authority, distributor, retailer] = await ethers.getSigners();
+  before(async function () {
+    const connection = await network.connect();
+    ethers = connection.ethers;
+  });
 
-    const contract = await ethers.deployContract("HalalGelatinSupplyChain");
+  async function deployWithRoles() {
+    const [admin, producer, authority, distributor, retailer, other] = await ethers.getSigners();
+    
+    // Get contract factory and deploy with admin signer
+    const ContractFactory = await ethers.getContractFactory("HalalGelatinSupplyChain");
+    const contract = await ContractFactory.connect(admin).deploy();
+    await contract.waitForDeployment();
 
-    // Admin assigns roles
     await (await contract.connect(admin).addProducer(producer.address)).wait();
     await (await contract.connect(admin).addAuthority(authority.address)).wait();
     await (await contract.connect(admin).addDistributor(distributor.address)).wait();
     await (await contract.connect(admin).addRetailer(retailer.address)).wait();
+
+    return { contract, admin, producer, authority, distributor, retailer, other };
+  }
+
+  it("runs the full halal gelatin flow end-to-end", async function () {
+    const { contract, admin, producer, authority, distributor, retailer } = await deployWithRoles();
 
     // Producer creates batch
     const batchId = makeBatchId();
@@ -87,5 +98,117 @@ describe("HalalGelatinSupplyChain", function () {
     batch = await contract.getBatch(batchId);
     expect(batch.productName).to.equal("Halal Gummy Bears");
     expect(batch.status).to.equal("Ready for Sale");
+  });
+
+  it("restricts role assignment to admin", async function () {
+    const { contract, producer, authority, distributor, retailer, other } = await deployWithRoles();
+
+    await expect(contract.connect(other).addProducer(other.address)).to.be.revertedWith(
+      "Only Admin can perform this action",
+    );
+    await expect(contract.connect(producer).addAuthority(other.address)).to.be.revertedWith(
+      "Only Admin can perform this action",
+    );
+    await expect(contract.connect(authority).addDistributor(other.address)).to.be.revertedWith(
+      "Only Admin can perform this action",
+    );
+    await expect(contract.connect(distributor).addRetailer(other.address)).to.be.revertedWith(
+      "Only Admin can perform this action",
+    );
+
+    // Sanity: role state remains unchanged for the random address
+    expect(await contract.producers(other.address)).to.equal(false);
+    expect(await contract.halalAuthorities(other.address)).to.equal(false);
+    expect(await contract.distributors(other.address)).to.equal(false);
+    expect(await contract.retailers(other.address)).to.equal(false);
+  });
+
+  it("prevents non-producers from creating a batch", async function () {
+    const { contract, other } = await deployWithRoles();
+    await expect(contract.connect(other).createBatch(makeBatchId(), "Raw Bovine Bones")).to.be.revertedWith(
+      "Only Producer (Farm) can perform this",
+    );
+  });
+
+  it("prevents duplicate batch IDs", async function () {
+    const { contract, producer } = await deployWithRoles();
+    const batchId = makeBatchId();
+
+    await (await contract.connect(producer).createBatch(batchId, "Raw Bovine Bones")).wait();
+    await expect(contract.connect(producer).createBatch(batchId, "Duplicate"))
+      .to.be.revertedWith("Batch ID already exists");
+  });
+
+  it("prevents non-authorities from certifying halal", async function () {
+    const { contract, producer, other } = await deployWithRoles();
+    const batchId = makeBatchId();
+    await (await contract.connect(producer).createBatch(batchId, "Raw Bovine Bones")).wait();
+
+    await expect(contract.connect(other).setHalalCertificate(batchId, "QmHash")).to.be.revertedWith(
+      "Only JAKIM can perform this",
+    );
+  });
+
+  it("reverts when certifying a missing batch", async function () {
+    const { contract, authority } = await deployWithRoles();
+    await expect(contract.connect(authority).setHalalCertificate("DOES-NOT-EXIST", "QmHash"))
+      .to.be.revertedWith("Batch does not exist");
+  });
+
+  it("prevents non-owners from transferring or updating status", async function () {
+    const { contract, producer, distributor, other } = await deployWithRoles();
+    const batchId = makeBatchId();
+    await (await contract.connect(producer).createBatch(batchId, "Raw Bovine Bones")).wait();
+
+    await expect(contract.connect(other).transferBatch(batchId, distributor.address)).to.be.revertedWith(
+      "You do not own this batch",
+    );
+    await expect(contract.connect(other).updateStatus(batchId, "Processed", "NewName")).to.be.revertedWith(
+      "You do not own this batch",
+    );
+  });
+
+  it("enforces producer -> distributor and distributor -> retailer transfer rules", async function () {
+    const { contract, producer, distributor, retailer, other } = await deployWithRoles();
+    const batchId = makeBatchId();
+    await (await contract.connect(producer).createBatch(batchId, "Raw Bovine Bones")).wait();
+
+    // Producer cannot transfer to non-distributor
+    await expect(contract.connect(producer).transferBatch(batchId, other.address)).to.be.revertedWith(
+      "Producer must transfer to a Distributor (Factory)",
+    );
+
+    // Producer -> distributor OK
+    await (await contract.connect(producer).transferBatch(batchId, distributor.address)).wait();
+
+    // Distributor cannot transfer to non-retailer
+    await expect(contract.connect(distributor).transferBatch(batchId, other.address)).to.be.revertedWith(
+      "Distributor must transfer to a Retailer",
+    );
+
+    // Distributor -> retailer OK
+    await expect(contract.connect(distributor).transferBatch(batchId, retailer.address))
+      .to.emit(contract, "BatchTransferred");
+  });
+
+  it("rejects transfer to the zero address", async function () {
+    const { contract, producer } = await deployWithRoles();
+    const batchId = makeBatchId();
+    await (await contract.connect(producer).createBatch(batchId, "Raw Bovine Bones")).wait();
+
+    await expect(contract.connect(producer).transferBatch(batchId, ethers.ZeroAddress)).to.be.revertedWith(
+      "Invalid address",
+    );
+  });
+
+  it("does not overwrite productName when updateStatus new name is empty", async function () {
+    const { contract, producer } = await deployWithRoles();
+    const batchId = makeBatchId();
+    await (await contract.connect(producer).createBatch(batchId, "Raw Bovine Bones")).wait();
+
+    await (await contract.connect(producer).updateStatus(batchId, "Status Only", "")).wait();
+    const batch = await contract.getBatch(batchId);
+    expect(batch.status).to.equal("Status Only");
+    expect(batch.productName).to.equal("Raw Bovine Bones");
   });
 });

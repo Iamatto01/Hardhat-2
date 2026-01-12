@@ -39,7 +39,13 @@ To run the deployment to a local chain:
 ```shell
 ```
 
-To run the deployment to Sepolia, you need an account with funds to send the transaction. The provided Hardhat configuration includes a Configuration Variable called `SEPOLIA_PRIVATE_KEY`, which you can use to set the private key of the account you want to use.
+To run the deployment to Sepolia, you need an account with SepoliaETH to pay gas.
+
+This repo expects:
+- `SEPOLIA_RPC_URL` (or `HARDHAT_VAR_SEPOLIA_RPC_URL`)
+- `SEPOLIA_PRIVATE_KEY` (or `HARDHAT_VAR_SEPOLIA_PRIVATE_KEY`)
+
+You can also create a local `.env` file (copy `.env.example` to `.env`). The Hardhat config loads it automatically.
 
 You can set the `SEPOLIA_PRIVATE_KEY` variable using the `hardhat-keystore` plugin or by setting it as an environment variable.
 
@@ -49,7 +55,8 @@ To set the `SEPOLIA_PRIVATE_KEY` config variable using `hardhat-keystore`:
 npx hardhat keystore set SEPOLIA_PRIVATE_KEY
 ```
 
-After setting the variable, you can run the deployment with the Sepolia network:
+After setting the variables, deploy with:
 
 ```shell
+npx hardhat run scripts/deploy.ts --network sepolia
 ```

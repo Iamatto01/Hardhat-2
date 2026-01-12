@@ -103,6 +103,23 @@
       margin-bottom: 10px;
       border-left: 4px solid #10b981;
     }
+    .address-display {
+      background: #f8f9fa;
+      padding: 12px;
+      border-radius: 6px;
+      margin: 10px 0;
+      font-family: monospace;
+      word-break: break-all;
+      color: #111;
+    }
+    .inline-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .inline-row button { width: auto; }
     #batchDetails {
       margin-top: 20px;
     }
@@ -118,10 +135,29 @@
     </header>
 
     <div class="section">
+      <h2>Connection</h2>
+      <div class="inline-row">
+        <div>
+          <div><strong>Contract Address</strong></div>
+          <div class="address-display" id="contractAddress">Loading...</div>
+        </div>
+        <div>
+          <div><strong>Connected Account (Farm)</strong></div>
+          <div class="address-display" id="connectedAccount">Not connected</div>
+        </div>
+        <div>
+          <button id="connectWalletBtn" type="button">Connect Wallet</button>
+          <button id="disconnectWalletBtn" type="button">Disconnect</button>
+          <div class="status" id="connectionStatus"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
       <h2>Create New Batch</h2>
       <div class="form-group">
-        <label>Batch ID (e.g., GEL-010325)</label>
-        <input type="text" id="batchId" placeholder="GEL-010325">
+        <label>Batch ID (format: GEL-YYYY-######)</label>
+        <input type="text" id="batchId" placeholder="GEL-2025-123456">
       </div>
       <div class="form-group">
         <label>Product Name (e.g., Raw Bovine Bones)</label>
@@ -135,7 +171,7 @@
       <h2>Transfer Batch to Factory</h2>
       <div class="form-group">
         <label>Batch ID</label>
-        <input type="text" id="transferBatchId" placeholder="GEL-2025-001">
+        <input type="text" id="transferBatchId" placeholder="GEL-2025-123456">
       </div>
       <div class="form-group">
         <label>Factory Address</label>
@@ -149,7 +185,7 @@
       <h2>View Batch</h2>
       <div class="form-group">
         <label>Batch ID</label>
-        <input type="text" id="viewBatchId" placeholder="GEL-2025-001">
+        <input type="text" id="viewBatchId" placeholder="GEL-2025-123456">
       </div>
       <button id="viewBatchBtn">View Batch Details</button>
       <div class="status" id="viewStatus"></div>
@@ -160,6 +196,7 @@
   <script src="js/contract-address.js"></script>
   <script src="js/config.js"></script>
   <script src="js/abi.js"></script>
+  <script src="js/web3.js"></script>
   <script>
     let contract;
     let signer;
@@ -170,30 +207,62 @@
       document.getElementById('createBatchBtn')?.addEventListener('click', connectAndCreateBatch);
       document.getElementById('transferBatchBtn')?.addEventListener('click', connectAndTransferBatch);
       document.getElementById('viewBatchBtn')?.addEventListener('click', connectAndViewBatch);
+      document.getElementById('connectWalletBtn')?.addEventListener('click', () => connectWallet('connectionStatus'));
+      document.getElementById('disconnectWalletBtn')?.addEventListener('click', () => disconnectWallet('connectionStatus'));
+      initPage();
     });
 
-    async function ensureContract(statusTarget) {
-      if (!window.ethereum) {
-        showStatus('Wallet not found. Install MetaMask.', 'error', statusTarget);
+    async function initPage() {
+      try {
+        const addr = await getContractAddress();
+        const el = document.getElementById('contractAddress');
+        if (el) el.textContent = addr;
+      } catch {
+        // ignore
+      }
+    }
+
+    async function connectWallet(statusTarget) {
+      const ok = await ensureContract(statusTarget);
+      if (!ok) return false;
+      try {
+        const p = new ethers.BrowserProvider(window.ethereum);
+        const s = await p.getSigner();
+        const a = await s.getAddress();
+        document.getElementById('connectedAccount').textContent = a;
+        const network = typeof window.getSelectedNetwork === 'function' ? window.getSelectedNetwork() : 'sepolia';
+        const label = network === 'localhost' ? 'Localhost' : 'Sepolia';
+        showStatus(`✅ Wallet connected (${label})`, 'success', statusTarget);
+      } catch (e) {
+        const msg = e?.message || String(e);
+        showStatus('Error: ' + msg, 'error', statusTarget);
+      }
+      return true;
+    }
+
+    async function disconnectWallet(statusTarget) {
+      try {
+        contract = null;
+        signer = null;
+        provider = null;
+        const el = document.getElementById('connectedAccount');
+        if (el) el.textContent = 'Not connected';
+        await window.disconnectWallet(statusTarget);
+        return true;
+      } catch (e) {
+        const msg = e?.message || String(e);
+        showStatus('❌ Disconnect failed. ' + msg, 'error', statusTarget);
         return false;
       }
+    }
+
+    async function ensureContract(statusTarget) {
       try {
-        provider = provider || new ethers.BrowserProvider(window.ethereum);
-        
-        // Check if already connected without prompting
-        const existingAccounts = await window.ethereum.request({ method: 'eth_accounts' });
-        let accounts = existingAccounts;
-        
-        // Only request if not already connected
-        if (accounts.length === 0) {
-          accounts = await provider.send('eth_requestAccounts', []);
-        }
-        
-        signer = await provider.getSigner();
-        contract = new ethers.Contract(await getContractAddress(), CONTRACT_ABI, signer);
-        return true;
+        contract = await window.getWriteContract(statusTarget);
+        return !!contract;
       } catch (error) {
-        showStatus('Error connecting wallet: ' + error.message, 'error', statusTarget);
+        const msg = error?.shortMessage || error?.info?.error?.message || error?.message || String(error);
+        showStatus('Error connecting wallet: ' + msg, 'error', statusTarget);
         return false;
       }
     }
@@ -201,6 +270,22 @@
     async function connectAndCreateBatch() {
       try {
         if (!contract && !(await ensureContract('createStatus'))) return;
+
+        // Helpful pre-check: ensure the connected wallet has Producer role
+        try {
+          const signerAddress = await contract.runner.getAddress();
+          const isProducer = await contract.producers(signerAddress);
+          if (!isProducer) {
+            showStatus(
+              '❌ Your wallet is not a Producer yet. Go to Admin page and grant Producer role to: ' + signerAddress,
+              'error',
+              'createStatus'
+            );
+            return;
+          }
+        } catch {
+          // ignore role pre-check if it fails
+        }
 
         const batchId = document.getElementById('batchId').value;
         const productName = document.getElementById('productName').value;
@@ -217,7 +302,15 @@
         document.getElementById('batchId').value = '';
         document.getElementById('productName').value = '';
       } catch (error) {
-        showStatus('Error: ' + error.message, 'error', 'createStatus');
+        const msg =
+          error?.shortMessage ||
+          error?.info?.error?.message ||
+          error?.data?.message ||
+          error?.error?.message ||
+          error?.cause?.message ||
+          error?.message ||
+          String(error);
+        showStatus('Error: ' + msg, 'error', 'createStatus');
       }
     }
 
@@ -238,6 +331,14 @@
           return;
         }
 
+        // Check batch exists before sending a transaction (better UX than a revert)
+        const readContract = await window.getReadContract();
+        const existing = await readContract.getBatch(batchId);
+        if (!existing || !existing.batchId || String(existing.batchId).trim().length === 0) {
+          showStatus('❌ Batch does not exist on-chain: ' + batchId, 'error', 'transferStatus');
+          return;
+        }
+
         const tx = await contract.transferBatch(batchId, factoryAddress);
         showStatus('Transferring batch... ' + tx.hash, 'success', 'transferStatus');
         await tx.wait();
@@ -245,16 +346,21 @@
         document.getElementById('transferBatchId').value = '';
         document.getElementById('factoryAddress').value = '';
       } catch (error) {
-        showStatus('Error: ' + error.message, 'error', 'transferStatus');
+        const msg =
+          error?.shortMessage ||
+          error?.info?.error?.message ||
+          error?.data?.message ||
+          error?.error?.message ||
+          error?.cause?.message ||
+          error?.message ||
+          String(error);
+        showStatus('Error: ' + msg, 'error', 'transferStatus');
       }
     }
 
     async function connectAndViewBatch() {
       try {
-        if (!contract) {
-          const readProvider = new ethers.JsonRpcProvider('http://localhost:8545');
-          contract = new ethers.Contract(await getContractAddress(), CONTRACT_ABI, readProvider);
-        }
+        const readContract = await window.getReadContract();
 
         const batchId = document.getElementById('viewBatchId').value;
         if (!batchId) {
@@ -262,10 +368,18 @@
           return;
         }
 
-        const batch = await contract.getBatch(batchId);
+        const batch = await readContract.getBatch(batchId);
         displayBatchDetails(batch);
       } catch (error) {
-        showStatus('Error: ' + error.message, 'error', 'viewStatus');
+        const msg =
+          error?.shortMessage ||
+          error?.info?.error?.message ||
+          error?.data?.message ||
+          error?.error?.message ||
+          error?.cause?.message ||
+          error?.message ||
+          String(error);
+        showStatus('Error: ' + msg, 'error', 'viewStatus');
       }
     }
 
@@ -290,10 +404,7 @@
       el.className = 'status ' + type;
     }
 
-    // Force wallet connection on page load
-    document.addEventListener('DOMContentLoaded', () => {
-      ensureContract('createStatus');
-    });
+    // Do not auto-prompt MetaMask on page load (cleaner UX)
   </script>
 </body>
 </html>

@@ -1,0 +1,9 @@
+{
+  "sepolia": {
+    "admin": "0xaf3e74DD31Efc523bDC1516a3f8e40874A5FA6C9",
+    "producer": "",
+    "authority": "",
+    "distributor": "",
+    "retailer": ""
+  }
+}

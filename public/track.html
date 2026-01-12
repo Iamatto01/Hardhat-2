@@ -209,7 +209,7 @@
     <div class="search-box">
       <div class="form-group">
         <label>Batch ID</label>
-        <input type="text" id="batchId" placeholder="Enter batch ID (e.g., GEL-2025-001)">
+        <input type="text" id="batchId" placeholder="Enter batch ID (e.g., GEL-2025-123456)">
       </div>
       <button id="trackBatchBtn">Track Batch</button>
       <div class="status" id="searchStatus"></div>
@@ -267,45 +267,88 @@
   <script src="js/contract-address.js"></script>
   <script src="js/config.js"></script>
   <script src="js/abi.js"></script>
+  <script src="js/web3.js"></script>
   <script>
     // Wire up buttons after DOM is ready
     document.addEventListener('DOMContentLoaded', () => {
-      document.getElementById('trackBatchBtn')?.addEventListener('click', trackBatch);
+      const btn = document.getElementById('trackBatchBtn');
+      if (btn) {
+        btn.addEventListener('click', trackBatch);
+      }
+
+      // Visible readiness signal so it never feels like "nothing happens".
+      showSearchStatus('Ready. Enter a batch ID or open from a QR link.', 'success');
     });
 
-    // Get batch ID from URL parameters if available
+    // Get batch ID / contract from URL parameters if available
     window.addEventListener('load', function() {
       const urlParams = new URLSearchParams(window.location.search);
-      const batchId = urlParams.get('batchId');
-      if (batchId) {
-        document.getElementById('batchId').value = batchId;
+      const contractOverride = urlParams.get('contract');
+      if (contractOverride) {
+        try {
+          window.setContractAddress(contractOverride);
+        } catch {
+          // ignore invalid
+        }
+      }
+
+      // Support two formats:
+      // - batchId=<ID>
+      // - batchId=<full URL that itself contains batchId=...>  (common user paste/older QR)
+      const rawBatch = urlParams.get('batchId');
+      let effectiveBatchId = rawBatch;
+      if (rawBatch && /^https?:\/\//i.test(rawBatch)) {
+        try {
+          const nested = new URL(rawBatch);
+          const nestedBatch = nested.searchParams.get('batchId');
+          const nestedContract = nested.searchParams.get('contract');
+          if (nestedContract && !contractOverride) {
+            try {
+              window.setContractAddress(nestedContract);
+            } catch {
+              // ignore
+            }
+          }
+          if (nestedBatch) effectiveBatchId = nestedBatch;
+        } catch {
+          // ignore
+        }
+      }
+
+      if (effectiveBatchId) {
+        document.getElementById('batchId').value = effectiveBatchId;
+        showSearchStatus('Loading batch details...', 'success');
         trackBatch();
       }
     });
 
     async function trackBatch() {
       try {
-        const batchId = document.getElementById('batchId').value;
-        if (!batchId) {
-          showStatus('Please enter a batch ID', 'error');
+        // If the shared helpers didn't load, fail loudly with guidance.
+        if (typeof window.getReadContract !== 'function') {
+          showSearchStatus('❌ Web3 helpers not loaded. Please refresh and ensure public/js/web3.js is accessible.', 'error');
+          return;
+        }
+        if (typeof window.getContractAddress !== 'function') {
+          showSearchStatus('❌ Contract helpers not loaded. Please refresh and ensure public/js/config.js is accessible.', 'error');
           return;
         }
 
-        showStatus('Fetching batch information...', 'success');
+        const batchId = document.getElementById('batchId').value;
+        if (!batchId) {
+          showSearchStatus('Please enter a batch ID', 'error');
+          return;
+        }
 
-        const provider = window.ethereum
-          ? new ethers.BrowserProvider(window.ethereum)
-          : new ethers.JsonRpcProvider('http://localhost:8545');
+        showSearchStatus('Fetching batch information...', 'success');
 
-        const urlParams = new URLSearchParams(window.location.search);
-        const contractOverride = urlParams.get('contract');
-        const contractAddress = contractOverride || await getContractAddress();
-        const contract = new ethers.Contract(contractAddress, CONTRACT_ABI, provider);
+        const contractAddress = await window.getContractAddress();
+        const contract = await window.getReadContract();
 
         const batch = await contract.getBatch(batchId);
 
         if (!batch.batchId) {
-          showStatus('❌ Batch not found. Please check the batch ID.', 'error');
+          showSearchStatus('❌ Batch not found. Please check the batch ID.', 'error');
           document.getElementById('batchDetails').classList.remove('active');
           document.getElementById('timeline').classList.remove('active');
           document.getElementById('qrSection').style.display = 'none';
@@ -314,9 +357,10 @@
 
         displayBatchDetails(batch);
         renderQr(batchId, contractAddress);
-        showStatus('✅ Batch found!', 'success');
+        showSearchStatus('✅ Batch found!', 'success');
       } catch (error) {
-        showStatus('Error: ' + error.message, 'error');
+        const msg = error?.message ? String(error.message) : String(error);
+        showSearchStatus('Error: ' + msg, 'error');
         document.getElementById('batchDetails').classList.remove('active');
         document.getElementById('timeline').classList.remove('active');
         document.getElementById('qrSection').style.display = 'none';
@@ -409,7 +453,7 @@
       const qrDiv = document.getElementById('qrCode');
       qrDiv.innerHTML = '';
 
-      const trackUrl = `${window.location.origin}/track.html?batchId=${encodeURIComponent(batchId)}&contract=${encodeURIComponent(contractAddress)}`;
+      const trackUrl = window.buildTrackUrl(batchId, contractAddress);
       document.getElementById('trackLink').textContent = trackUrl;
 
       new QRCode(qrDiv, {
@@ -424,9 +468,19 @@
       document.getElementById('qrSection').style.display = 'block';
     }
 
-    // Uses window.showStatus from js/config.js
-    function showStatus(message, type) {
-      window.showStatus(message, type, 'searchStatus');
+    // Uses window.showStatus from js/config.js when available, with a safe local fallback.
+    function showSearchStatus(message, type) {
+      const globalShowStatus = window.showStatus;
+      if (typeof globalShowStatus === 'function') {
+        globalShowStatus(message, type, 'searchStatus');
+        return;
+      }
+
+      const el = document.getElementById('searchStatus');
+      if (!el) return;
+      el.textContent = message;
+      el.className = 'status ' + (type === 'success' ? 'success' : 'error');
+      el.style.display = 'block';
     }
   </script>
 </body>

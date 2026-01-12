@@ -44,6 +44,74 @@ npx hardhat run scripts/deploy.ts --network localhost
 ```powershell
 npx hardhat run scripts/interact.ts --network localhost
 ```
+
+## Open the UI on your phone (QR scanning)
+
+### Serve the `public/` site on your Wi‑Fi network
+
+From the project folder run:
+
+```powershell
+npm run serve:public
+```
+
+Then on your phone (same Wi‑Fi), open:
+
+`http://YOUR_PC_LAN_IP:8080/index.html`
+
+Example: `http://192.168.1.50:8080/index.html`
+
+### Important note about phone camera scanning
+
+Most mobile browsers only allow camera access (`getUserMedia`) on **HTTPS** pages ("secure context").
+
+- If the camera scan button doesn’t work on your phone over `http://...`, use **Scan from Library** (pick a QR image) in the scanner modal.
+- If you need live camera scanning on your phone, use an HTTPS URL (for example via a tunnel like `npx localtunnel --port 8080`) or serve the site with HTTPS.
+
+## Run (Sepolia)
+
+### Terminal: Set env vars (PowerShell)
+
+You can use either naming style:
+
+**Option A (recommended, works with this repo now):**
+
+```powershell
+$Env:SEPOLIA_RPC_URL = "https://sepolia.infura.io/v3/YOUR_KEY"
+$Env:SEPOLIA_PRIVATE_KEY = "0xYOUR_PRIVATE_KEY"
+```
+
+**Option B (Hardhat 3 config variables style):**
+
+```powershell
+$Env:HARDHAT_VAR_SEPOLIA_RPC_URL = "https://sepolia.infura.io/v3/YOUR_KEY"
+$Env:HARDHAT_VAR_SEPOLIA_PRIVATE_KEY = "0xYOUR_PRIVATE_KEY"
+```
+
+### Option C: Use a local `.env` file (recommended)
+
+1) Copy `.env.example` to `.env`
+
+```powershell
+Copy-Item .env.example .env
+```
+
+2) Edit `.env` and set:
+- `SEPOLIA_RPC_URL` (e.g., your Alchemy Sepolia HTTPS URL)
+- `SEPOLIA_PRIVATE_KEY` (your wallet private key, starting with `0x`)
+
+Note: `.env` is gitignored so secrets won't be committed.
+
+### Deploy
+
+```powershell
+npx hardhat run scripts/deploy.ts --network sepolia
+```
+
+This will auto-update:
+- `public/js/contract-address.js`
+- `public/js/abi.js`
+
 ## Source code (full)
 
 Include the following files in your PDF:

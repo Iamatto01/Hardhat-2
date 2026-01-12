@@ -7,49 +7,48 @@
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.7.1/dist/ethers.umd.min.js"></script>
   <script src="js/contract-address.js"></script>
   <script src="js/config.js"></script>
+  <script src="js/abi.js"></script>
+  <script src="js/web3.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: radial-gradient(circle at 20% 20%, rgba(124,58,237,0.16), transparent 25%),
-                  radial-gradient(circle at 80% 10%, rgba(56,189,248,0.16), transparent 25%),
+      background: radial-gradient(circle at 20% 20%, rgba(124,58,237,0.2), transparent 26%),
+                  radial-gradient(circle at 80% 0%, rgba(14,165,233,0.18), transparent 28%),
                   linear-gradient(135deg, #0f172a 0%, #111827 50%, #0b1220 100%);
       min-height: 100vh;
       padding: 20px;
       color: #e5e7eb;
-      overflow-x: hidden;
     }
-    .container { max-width: 1150px; margin: 0 auto; }
-    header { color: #e5e7eb; margin-bottom: 20px; }
-    h1 { font-size: 2.6em; margin-bottom: 4px; }
-    .subtitle { font-size: 1em; opacity: 0.85; }
-
-    /* --- Top Bar --- */
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
     .topbar {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.05);
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.06);
       border-radius: 16px;
-      padding: 14px 18px;
-      box-shadow: 0 12px 30px rgba(0,0,0,0.45);
+      padding: 16px 20px;
+      box-shadow: 0 12px 28px rgba(0,0,0,0.45);
       margin-bottom: 18px;
-      -webkit-backdrop-filter: blur(6px);
-      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(10px);
+      backdrop-filter: blur(10px);
     }
     .brand { display: flex; align-items: center; gap: 10px; }
     .brand-badge {
-      width: 38px; height: 38px;
+      width: 38px;
+      height: 38px;
       border-radius: 12px;
-      display: grid; place-items: center;
+      display: grid;
+      place-items: center;
       background: linear-gradient(135deg, #22d3ee, #6366f1);
       color: #0b1220;
       font-weight: 800;
       box-shadow: 0 10px 26px rgba(99,102,241,0.45);
     }
-    
-    /* Updated Pill Styles to support Button */
     .pill {
       display: inline-flex;
       align-items: center;
@@ -63,7 +62,6 @@
       box-shadow: inset 0 0 0 1px rgba(255,255,255,0.02);
       font-size: 1rem;
     }
-    /* Specific styles for the clickable button version */
     button.pill {
       cursor: pointer;
       font-family: inherit;
@@ -79,13 +77,29 @@
     button.pill:active {
       transform: translateY(0);
     }
-
-    .pill .dot { width: 10px; height: 10px; border-radius: 50%; background: #34d399; box-shadow: 0 0 10px rgba(52,211,153,0.8); }
-    .pill .fox { font-size: 1.2em; }
-    .brand-name { font-weight: 800; letter-spacing: 0.2px; }
-    .brand-subtitle { font-size: 0.9em; opacity: 0.7; }
-    .topbar-right { display: flex; gap: 10px; align-items: center; }
-
+    .pill .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #34d399;
+      box-shadow: 0 0 10px rgba(52,211,153,0.8);
+    }
+    .pill .fox {
+      font-size: 1.2em;
+    }
+    .brand-name {
+      font-weight: 800;
+      letter-spacing: 0.2px;
+    }
+    .brand-subtitle {
+      font-size: 0.9em;
+      opacity: 0.7;
+    }
+    .topbar-right {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
     .addr-wrap {
       display: flex;
       align-items: center;
@@ -101,32 +115,213 @@
       font-weight: 600;
       outline: none;
     }
-    .addr-input::placeholder { color: #cbd5e1; opacity: 0.75; }
-
-    /* --- Panels --- */
-    .feature {
-      background: linear-gradient(135deg, rgba(99,102,241,0.2), rgba(14,165,233,0.12));
-      padding: 18px;
-      border-radius: 14px;
-      margin-bottom: 18px;
+    .addr-input::placeholder {
+      color: #cbd5e1;
+      opacity: 0.75;
+    }
+    header {
+      position: relative;
+    }
+    .hero {
+      background: rgba(15,23,42,0.8);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 18px;
+      padding: 28px;
+      margin-bottom: 14px;
+      box-shadow: 0 24px 45px rgba(0,0,0,0.45);
+      -webkit-backdrop-filter: blur(12px);
+      backdrop-filter: blur(12px);
+    }
+    .hero h1 {
+      font-size: 2.4rem;
+      line-height: 1.25;
+      margin-bottom: 12px;
+    }
+    .hero .subtitle {
       color: #e0e7ff;
-      border: 1px solid rgba(255,255,255,0.06);
-      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+      font-size: 1.05rem;
+      max-width: 780px;
+      line-height: 1.6;
     }
-    .feature h3 { margin-bottom: 6px; }
-
-    .live-headline {
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.06);
+    .eyebrow {
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.4em;
+      color: #94a3b8;
+      margin-bottom: 10px;
+    }
+    .status {
+      margin-top: 12px;
+      padding: 14px 18px;
       border-radius: 14px;
-      box-shadow: 0 12px 32px rgba(0,0,0,0.4);
-      padding: 18px 20px;
-      margin-bottom: 18px;
-      transition: opacity 0.3s ease;
+      border: 1px solid rgba(255,255,255,0.12);
+      font-weight: 600;
+      display: none;
+      box-shadow: 0 14px 32px rgba(0,0,0,0.45);
     }
-    .live-headline h2 { color: #c7d2fe; font-size: 1.4em; margin-bottom: 6px; }
-    .live-headline p { color: #cbd5e1; }
-
+    .status.visible {
+      display: block;
+    }
+    .status.success {
+      background: rgba(22,163,74,0.12);
+      border-color: rgba(22,163,74,0.4);
+      color: #bbf7d0;
+    }
+    .status.error {
+      background: rgba(239,68,68,0.12);
+      border-color: rgba(239,68,68,0.45);
+      color: #fecaca;
+    }
+    .role-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    .role-card {
+      position: relative;
+      padding: 22px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, rgba(15,23,42,0.9), rgba(30,64,175,0.25));
+      border: 1px solid rgba(255,255,255,0.05);
+      box-shadow: 0 18px 36px rgba(0,0,0,0.45);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-height: 240px;
+      overflow: hidden;
+    }
+    .role-card::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(59,130,246,0.08), rgba(236,72,153,0.06));
+      pointer-events: none;
+    }
+    .role-icon {
+      font-size: 2.4rem;
+    }
+    .role-card h3 {
+      font-size: 1.5rem;
+      z-index: 1;
+    }
+    .role-description {
+      color: #cbd5e1;
+      line-height: 1.5;
+      z-index: 1;
+    }
+    .role-note {
+      color: #94a3b8;
+      font-size: 0.9rem;
+      margin-bottom: 6px;
+      z-index: 1;
+    }
+    .role-cta {
+      margin-top: auto;
+      padding: 12px 16px;
+      border-radius: 12px;
+      border: none;
+      background: linear-gradient(135deg, #22d3ee, #6366f1);
+      color: #0b1220;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      z-index: 1;
+    }
+    .role-cta:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 16px 30px rgba(99,102,241,0.5);
+    }
+    .consumer-panel {
+      margin-bottom: 28px;
+    }
+    .consumer-card {
+      border-radius: 18px;
+      background: rgba(15,23,42,0.85);
+      border: 1px solid rgba(255,255,255,0.05);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      box-shadow: 0 18px 36px rgba(0,0,0,0.45);
+    }
+    .consumer-card h3 {
+      margin: 0;
+      font-size: 1.4rem;
+      color: #e0e7ff;
+    }
+    .consumer-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+    .consumer-input {
+      flex: 1 1 260px;
+      min-width: 220px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.04);
+      color: #e5e7eb;
+      font-weight: 600;
+    }
+    .consumer-input::placeholder {
+      color: #94a3b8;
+    }
+    .scan-btn {
+      background: linear-gradient(135deg, #f97316, #facc15);
+      color: #0b1220;
+    }
+    .info-panel {
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(15,23,42,0.8);
+      padding: 22px;
+      box-shadow: 0 16px 32px rgba(0,0,0,0.35);
+      margin-bottom: 32px;
+    }
+    .role-list {
+      list-style: none;
+      margin: 16px 0;
+      padding: 0;
+      display: grid;
+      gap: 10px;
+    }
+    .role-list li {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.06);
+      background: rgba(255,255,255,0.02);
+      font-size: 0.95rem;
+    }
+    .role-name {
+      font-weight: 600;
+      color: #e0e7ff;
+    }
+    .role-address {
+      font-family: "Source Code Pro", "Courier New", monospace;
+      color: #a5b4fc;
+      font-size: 0.9rem;
+    }
+    .role-placeholder {
+      justify-content: center;
+      font-style: italic;
+      color: #cbd5e1;
+    }
+    .muted-text {
+      color: #94a3b8;
+      font-size: 0.85rem;
+    }
+    .role-footnote {
+      margin-top: 14px;
+      font-size: 0.85rem;
+    }
     /* --- Carousel --- */
     .hex-stage {
       position: relative;
@@ -150,15 +345,15 @@
     }
     .hex-carousel::-webkit-scrollbar { display: none; }
     .hex-carousel:active { cursor: grabbing; }
-    
+
     .hex-track {
       display: flex;
       align-items: center;
       gap: 16px;
       padding: 4px;
-      width: max-content; 
+      width: max-content;
     }
-    
+
     .hex-card {
       position: relative;
       width: 520px;
@@ -191,33 +386,38 @@
       background: rgba(15,23,42,0.95);
       border: 1px solid rgba(255,255,255,0.08);
       clip-path: polygon(25% 5%, 75% 5%, 100% 50%, 75% 95%, 25% 95%, 0% 50%);
-      padding: 38px;
+      padding: 34px 28px;
       display: flex;
       flex-direction: column;
       justify-content: center;
-      gap: 14px;
+      gap: 10px;
       text-align: center;
     }
     .hex-icon { font-size: 2.6em; }
     .hex-title { color: #c7d2fe; font-size: 1.8em; font-weight: 750; }
     .hex-text { color: #cbd5e1; line-height: 1.55; }
-    
-    .hex-link {
-      display: inline-block;
-      margin: 6px auto 0;
+    .hex-note {
+      font-size: 0.9rem;
+      color: #94a3b8;
+      min-height: 2.1em;
+    }
+    .hex-cta {
+      margin: 0 auto;
+      margin-top: 10px;
+      padding: 12px 20px;
+      border-radius: 999px;
+      border: none;
       background: linear-gradient(135deg, #22d3ee 0%, #6366f1 50%, #a855f7 100%);
       color: #0b1220;
-      padding: 12px 22px;
-      border-radius: 10px;
-      text-decoration: none;
       font-weight: 800;
-      width: fit-content;
+      letter-spacing: 0.02em;
+      cursor: pointer;
       transition: transform 0.2s ease, box-shadow 0.2s ease;
-      box-shadow: 0 12px 26px rgba(99,102,241,0.4);
-      pointer-events: auto;
     }
-    .hex-link:hover { transform: translateY(-2px); box-shadow: 0 16px 30px rgba(99,102,241,0.55); }
-
+    .hex-cta:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 18px 32px rgba(99,102,241,0.55);
+    }
     .nav-btn {
       width: 46px;
       height: 46px;
@@ -232,22 +432,86 @@
       z-index: 10;
       transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
     }
-    .nav-btn:hover { transform: translateY(-2px); box-shadow: 0 18px 40px rgba(0,0,0,0.4); background: rgba(255,255,255,0.14); }
-
+    .nav-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 18px 40px rgba(0,0,0,0.4);
+      background: rgba(255,255,255,0.14);
+    }
     .footer {
       text-align: center;
-      color: #cbd5e1;
-      margin-top: 30px;
-      opacity: 0.85;
+      font-size: 0.9rem;
+      opacity: 0.75;
+      margin-bottom: 12px;
     }
-
+    .qr-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(5,12,20,0.9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 32px;
+      z-index: 1200;
+    }
+    .qr-modal.hidden {
+      display: none;
+    }
+    .qr-modal__content {
+      width: min(420px, 100%);
+      border-radius: 18px;
+      background: rgba(15,23,42,0.95);
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 24px;
+      position: relative;
+      text-align: center;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+    }
+    .qr-close {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      border: none;
+      background: rgba(255,255,255,0.08);
+      color: #e5e7eb;
+      font-size: 1.1rem;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+    .qr-reader {
+      width: 100%;
+      height: 320px;
+      margin-top: 12px;
+    }
     @media (max-width: 720px) {
-      h1 { font-size: 2.4em; }
-      .hex-card { width: 90vw; flex: 0 0 90vw; }
-      .hex-inner { padding: 30px 24px; }
-      .hex-stage { gap: 12px; }
-      .brand-subtitle { display: none; }
-      .addr-input { width: 160px; }
+      .topbar {
+        flex-direction: column;
+        gap: 12px;
+      }
+      .addr-input {
+        width: 100%;
+      }
+      .role-card {
+        min-height: 220px;
+      }
+      .consumer-actions {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .consumer-input {
+        width: 100%;
+      }
+      .hex-card {
+        width: 90vw;
+        flex: 0 0 90vw;
+      }
+      .hex-inner {
+        padding: 30px 22px;
+      }
+      .hex-stage {
+        gap: 12px;
+      }
     }
   </style>
 </head>
@@ -258,11 +522,11 @@
         <div class="brand-badge">HG</div>
         <div>
           <div class="brand-name">Halal Gelatin</div>
-          <div class="brand-subtitle">Secure Supply Chain</div>
+          <div class="brand-subtitle">Secure Supply Chain Console</div>
         </div>
       </div>
       <div class="topbar-right">
-        <span class="pill" id="chainPill"><span class="dot"></span> Chain: Localhost</span>
+        <button class="pill" id="chainPill" type="button" title="Switch network (Sepolia ↔ localhost)"><span class="dot"></span> Chain: Unknown</button>
         <div class="addr-wrap">
           <input id="contractAddressInput" class="addr-input" placeholder="Contract address (0x...)" />
           <button id="setContractBtn" class="pill">Set</button>
@@ -270,24 +534,15 @@
         <button id="connectWalletBtn" class="pill">
           <span class="fox">🦊</span> <span id="walletText">Connect Wallet</span>
         </button>
+        <button id="disconnectWalletBtn" class="pill" type="button">Disconnect</button>
       </div>
     </div>
-
-    <header>
-      <h1>Blockchain Operations Console</h1>
-      <p class="subtitle">Navigate roles, connect wallet, and launch the right dashboard.</p>
+    <header class="hero">
+      <p class="eyebrow">Role-Based Entry</p>
+      <h1>Choose a role, connect MetaMask, and move forward.</h1>
+      <p class="subtitle">Only admin-assigned wallets can enter their dashboards. Unauthorized attempts immediately raise the alert message shown below so you can spot when a wallet is blocked.</p>
     </header>
-
-    <div class="feature">
-      <h3>✅ Halal Compliance Tracking</h3>
-      <p>Browse each role to see actions, then jump in with your connected wallet.</p>
-    </div>
-
-    <div class="live-headline">
-      <h2 id="currentTitle">Loading...</h2>
-      <p id="currentText">Please wait...</p>
-    </div>
-
+    <div id="statusBanner" class="status"></div>
     <div class="hex-stage">
       <button class="nav-btn" id="prevBtn" aria-label="Previous role">‹</button>
 
@@ -297,258 +552,665 @@
 
       <button class="nav-btn" id="nextBtn" aria-label="Next role">›</button>
     </div>
-
+    <section class="consumer-panel">
+      <div class="consumer-card">
+        <div>
+          <p class="eyebrow">Consumer Verification</p>
+          <h3>Track batches without logging in</h3>
+          <p class="muted-text">Enter a batch ID or scan a QR code to see the chain of custody and halal certificate details without MetaMask.</p>
+        </div>
+        <div class="consumer-actions">
+          <input id="consumerBatchInput" class="consumer-input" placeholder="Batch ID (e.g., GEL-2025-01)" />
+          <button type="button" class="pill" id="consumerGoBtn">View Batch</button>
+          <button type="button" class="pill scan-btn" id="scanQrBtn">Scan QR</button>
+        </div>
+      </div>
+    </section>
+    <section class="info-panel">
+      <div>
+        <h3>Saved role assignments</h3>
+        <p class="muted-text" id="assignedNetworkLabel">Network: loading...</p>
+      </div>
+      <ul id="assignedRolesList" class="role-list">
+        <li class="role-placeholder">Run <span class="muted-text">npx hardhat run scripts/deploy.ts --network localhost</span> to cache assignments.</li>
+      </ul>
+      <p class="muted-text role-footnote">If values remain empty, rerun the deploy script after your node is up; it now grants the main roles automatically so you do not have to assign them manually.</p>
+    </section>
     <div class="footer">
-      <p>Halal Gelatin Supply Chain Management System | Secured by Blockchain</p>
+      <p>Halal Gelatin Supply Chain Management | Web3 role gating across MetaMask + Sepolia/localhost.</p>
     </div>
   </div>
+  <div class="qr-modal hidden" id="qrModal">
+    <div class="qr-modal__content">
+      <button class="qr-close" type="button" id="qrModalClose" aria-label="Close scanner">✕</button>
+      <h3>Scan a QR code</h3>
+      <p class="muted-text">Allow camera access and point it at the QR printed on the product.</p>
+      <div id="qrReader" class="qr-reader"></div>
+      <div class="consumer-actions" style="margin-top: 12px; justify-content: center;">
+        <label class="pill" for="qrFileInput" id="scanFileLabel" style="cursor:pointer;">Scan from Library</label>
+        <input type="file" id="qrFileInput" accept="image/*" style="position:absolute; left:-9999px; width:1px; height:1px; opacity:0" />
+      </div>
+    </div>
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.7/html5-qrcode.min.js"></script>
   <script>
-    const roles = [
-      { key: 'admin', title: 'Admin Panel', text: 'Manage roles, grant access, and monitor participants across the chain.', link: 'admin.html', cta: 'Access Admin', icon: '👨‍💼' },
-      { key: 'producer', title: 'Producer (Farm)', text: 'Create batches at the source, set initial product names, and hand off to the factory.', link: 'producer.html', cta: 'Go to Producer', icon: '🌾' },
-      { key: 'authority', title: 'Halal Authority (JAKIM)', text: 'Review batches and attach halal certificates with traceable hashes.', link: 'authority.html', cta: 'Go to Authority', icon: '✔️' },
-      { key: 'distributor', title: 'Distributor (Factory)', text: 'Process gelatin, update status, and transfer custody to retailers.', link: 'distributor.html', cta: 'Go to Distributor', icon: '🏭' },
-      { key: 'retailer', title: 'Retailer', text: 'Finalize products, update readiness, and generate QR codes for consumers.', link: 'retailer.html', cta: 'Go to Retailer', icon: '🛍️' },
-      { key: 'track', title: 'Track Batch (Consumer)', text: 'Let consumers scan or enter a batch ID to see the complete journey.', link: 'track.html', cta: 'Track Batch', icon: '🔍' }
-    ];
-
-    const loopRoles = [...roles, ...roles, ...roles, ...roles, ...roles];
-
-    const currentTitle = document.getElementById('currentTitle');
-    const currentText = document.getElementById('currentText');
-    const carousel = document.getElementById('hexCarousel');
-    const track = document.getElementById('hexTrack');
-    
-    // Generate Cards
-    loopRoles.forEach((role, idx) => {
-      const card = document.createElement('div');
-      card.className = 'hex-card';
-      card.dataset.idx = idx;
-      card.innerHTML = `
-        <div class="hex-outline"></div>
-        <div class="hex-inner">
-          <div class="hex-icon">${role.icon}</div>
-          <div class="hex-title">${role.title}</div>
-          <div class="hex-text">${role.text}</div>
-          <a class="hex-link" href="${role.link}" draggable="false">${role.cta}</a>
-        </div>
-      `;
-      track.appendChild(card);
-    });
-
-    let cardWidth = 0;
-    let isDragging = false;
-    let startX = 0;
-    let startScrollLeft = 0;
-    let snapTimer = null;
-
-    function measure() {
-      const card = track.querySelector('.hex-card');
-      if (card) {
-        cardWidth = card.offsetWidth + 16; 
-      }
-    }
-
-    function updateActiveState() {
-      if (!cardWidth) return;
-      const centerLine = carousel.scrollLeft + (carousel.clientWidth / 2);
-      const cards = Array.from(track.children);
-      
-      let activeIdx = 0;
-      let minDist = Infinity;
-
-      // Find closest card to absolute center
-      cards.forEach((card, i) => {
-        const cardCenter = (i * cardWidth) + (cardWidth / 2);
-        const dist = Math.abs(centerLine - cardCenter);
-        
-        if (dist < minDist) {
-          minDist = dist;
-          activeIdx = i;
+    (function () {
+      const statusTarget = "statusBanner";
+      const assignedNetworkLabel = document.getElementById("assignedNetworkLabel");
+      const assignedRolesList = document.getElementById("assignedRolesList");
+      const consumerInput = document.getElementById("consumerBatchInput");
+      const consumerGoBtn = document.getElementById("consumerGoBtn");
+      const scanQrBtn = document.getElementById("scanQrBtn");
+      const qrModal = document.getElementById("qrModal");
+      const qrModalClose = document.getElementById("qrModalClose");
+      const scanFileLabel = document.getElementById("scanFileLabel");
+      const qrFileInput = document.getElementById("qrFileInput");
+      const connectWalletBtn = document.getElementById("connectWalletBtn");
+      const disconnectWalletBtn = document.getElementById("disconnectWalletBtn");
+      const statusElement = document.getElementById(statusTarget);
+      const currentTitle = document.getElementById("currentTitle");
+      const currentText = document.getElementById("currentText");
+      const carousel = document.getElementById("hexCarousel");
+      const hexTrack = document.getElementById("hexTrack");
+      const prevBtn = document.getElementById("prevBtn");
+      const nextBtn = document.getElementById("nextBtn");
+      const friendlyMap = {
+        admin: "Admin",
+        producer: "Producer",
+        authority: "Halal Authority",
+        distributor: "Distributor",
+        retailer: "Retailer",
+      };
+      const interactiveRoles = [
+        {
+          key: "admin",
+          title: "Admin Panel",
+          description: "Govern access, approve role assignments, and audit on-chain activity.",
+          note: "Only the deployer wallet can unlock this experience.",
+          link: "admin.html",
+          icon: "🛡️",
+          cta: "Enter Admin",
+        },
+        {
+          key: "producer",
+          title: "Producer (Farm)",
+          description: "Create batches, name the product, and hand it off to the factory.",
+          note: "Connect the admin-assigned producer wallet.",
+          link: "producer.html",
+          icon: "🌾",
+          cta: "Enter Producer",
+        },
+        {
+          key: "authority",
+          title: "Halal Authority (JAKIM)",
+          description: "Review the slaughter, attach halal certificates, and certify traceability.",
+          note: "Only on-chain authorities can proceed.",
+          link: "authority.html",
+          icon: "✔️",
+          cta: "Enter Authority",
+        },
+        {
+          key: "distributor",
+          title: "Distributor (Factory)",
+          description: "Process gelatin, update status, and transfer custody to retailers.",
+          note: "MetaMask must match the distributor address on-chain.",
+          link: "distributor.html",
+          icon: "🏭",
+          cta: "Enter Distributor",
+        },
+        {
+          key: "retailer",
+          title: "Retailer",
+          description: "Finalize products, attach QR certificates, and release goods to consumers.",
+          note: "Only retailer wallets granted by the admin can enter.",
+          link: "retailer.html",
+          icon: "🛍️",
+          cta: "Enter Retailer",
+        },
+      ];
+      let statusTimer;
+      function displayStatus(message, type) {
+        if (!statusElement) return;
+        if (typeof window.showStatus === "function") {
+          window.showStatus(message, type, statusTarget);
+        } else {
+          statusElement.textContent = message;
+          statusElement.className = `status ${type}`;
+          statusElement.style.display = "block";
         }
-      });
-
-      // Apply classes
-      cards.forEach((card, i) => {
-        if (i === activeIdx) card.classList.add('center');
-        else card.classList.remove('center');
-      });
-
-      // Update Text
-      const realRoleIndex = activeIdx % roles.length;
-      const role = roles[realRoleIndex];
-      if (role && currentTitle.textContent !== role.title) {
-        currentTitle.textContent = role.title;
-        currentText.textContent = role.text;
+        statusElement.classList.add("visible");
+        clearTimeout(statusTimer);
+        statusTimer = window.setTimeout(() => {
+          statusElement.classList.remove("visible");
+          statusElement.style.display = "none";
+        }, 7000);
       }
-    }
-
-    function normalizeScroll() {
-      if (!cardWidth) return;
-      const totalCards = loopRoles.length;
-      const currentIndex = Math.round(carousel.scrollLeft / cardWidth);
-      
-      // Infinite Loop Logic
-      if (currentIndex < roles.length) {
-        carousel.scrollTo({
-          left: carousel.scrollLeft + (roles.length * cardWidth),
-          behavior: 'auto'
-        });
-      } else if (currentIndex > totalCards - roles.length) {
-        carousel.scrollTo({
-          left: carousel.scrollLeft - (roles.length * cardWidth),
-          behavior: 'auto'
-        });
+      function shortAddress(addr) {
+        if (!addr) return "";
+        return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
       }
-    }
-
-    function snapToNearest() {
-      if (isDragging || !cardWidth) return;
-      
-      const center = carousel.scrollLeft + (carousel.clientWidth / 2);
-      // Determine index based on pure layout math
-      const rawIndex = (center / cardWidth) - 0.5; 
-      const targetIndex = Math.round(rawIndex);
-      const targetScroll = (targetIndex * cardWidth) + (cardWidth / 2) - (carousel.clientWidth / 2);
-
-      carousel.scrollTo({ left: targetScroll, behavior: 'smooth' });
-    }
-
-    function move(direction) {
-      if (!cardWidth) return;
-      const center = carousel.scrollLeft + (carousel.clientWidth / 2);
-      const currentIndex = Math.round((center / cardWidth) - 0.5);
-      const targetIndex = currentIndex + direction;
-      const targetScroll = (targetIndex * cardWidth) + (cardWidth / 2) - (carousel.clientWidth / 2);
-
-      carousel.scrollTo({ left: targetScroll, behavior: 'smooth' });
-    }
-
-    // --- Connect Wallet Logic ---
-    const connectWalletBtn = document.getElementById('connectWalletBtn');
-    const walletText = document.getElementById('walletText');
-
-    async function connectMetaMask() {
-      if (typeof window.ethereum !== 'undefined') {
+      function friendlyName(roleKey) {
+        return friendlyMap[roleKey] ?? roleKey;
+      }
+      async function buildRoleUrl(path) {
+        const url = new URL(path, window.location.href);
         try {
-          walletText.textContent = "Connecting..."; // Feedback
-          const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-          const account = accounts[0];
-          
-          // Show shortened address (e.g., 0x1234...5678)
-          const shortAddr = account.substring(0, 6) + "..." + account.substring(account.length - 4);
-          walletText.textContent = shortAddr;
-          
-          console.log('Connected:', accounts[0]);
-        } catch (error) {
-          console.error('User denied account access:', error);
-          walletText.textContent = "Connect Wallet";
+          const network = window.getSelectedNetwork?.() ?? "";
+          if (network) url.searchParams.set("network", network);
+        } catch {
+          // ignore
         }
-      } else {
-        alert('MetaMask is not installed. Please install it to use this feature.');
-      }
-    }
-
-    // Bind event to new top bar button
-    connectWalletBtn.addEventListener('click', connectMetaMask);
-
-    // --- Contract Address UI ---
-    const contractAddressInput = document.getElementById('contractAddressInput');
-    const setContractBtn = document.getElementById('setContractBtn');
-    const chainPill = document.getElementById('chainPill');
-
-    async function initContractAddressUi() {
-      if (!contractAddressInput || !setContractBtn) return;
-
-      try {
-        const addr = await window.getContractAddress();
-        contractAddressInput.value = addr;
-        if (chainPill) chainPill.title = `Contract: ${addr}`;
-      } catch {
-        // ignore
-      }
-
-      setContractBtn.addEventListener('click', () => {
         try {
-          const saved = window.setContractAddress(contractAddressInput.value);
-          if (chainPill) chainPill.title = `Contract: ${saved}`;
-          const prev = setContractBtn.textContent;
-          setContractBtn.textContent = 'Saved';
-          setTimeout(() => {
-            setContractBtn.textContent = prev || 'Set';
+          const contract = await window.getContractAddress?.();
+          if (contract) url.searchParams.set("contract", contract);
+        } catch {
+          // ignore
+        }
+        return url.toString();
+      }
+      async function verifyRole(roleKey, contract, address) {
+        const normalized = String(address ?? "").toLowerCase();
+        if (!normalized) return false;
+        try {
+          switch (roleKey) {
+            case "admin": {
+              const admin = String(await contract.admin()).toLowerCase();
+              return admin === normalized;
+            }
+            case "producer":
+              return Boolean(await contract.producers(address));
+            case "authority":
+              return Boolean(await contract.halalAuthorities(address));
+            case "distributor":
+              return Boolean(await contract.distributors(address));
+            case "retailer":
+              return Boolean(await contract.retailers(address));
+            default:
+              return false;
+          }
+        } catch {
+          return false;
+        }
+      }
+      async function handleRoleSelection(role, button) {
+        if (!button) return;
+        const originalLabel = button.textContent;
+        button.disabled = true;
+        button.textContent = "Verifying...";
+        displayStatus(`🔐 Connecting MetaMask for ${role.title}...`, "success");
+        try {
+          const contract = await window.getWriteContract(statusTarget);
+          if (!contract) return;
+          const runner = contract.runner;
+          if (!runner || typeof runner.getAddress !== "function") {
+            throw new Error("Wallet signer not available. Please reconnect MetaMask.");
+          }
+          const signerAddress = String(await runner.getAddress()).toLowerCase();
+          const allowed = await verifyRole(role.key, contract, signerAddress);
+          if (!allowed) {
+            displayStatus("❌ you are not authorize to use this (yada2)", "error");
+            return;
+          }
+          displayStatus(`✅ ${friendlyName(role.key)} wallet confirmed. Redirecting...`, "success");
+          const targetUrl = await buildRoleUrl(role.link);
+          window.setTimeout(() => {
+            window.location.href = targetUrl;
           }, 900);
-        } catch (e) {
-          alert(e?.message || String(e));
+        } catch (error) {
+          displayStatus("❌ Connection error. " + (error?.message ?? "Please try again."), "error");
+        } finally {
+          button.disabled = false;
+          button.textContent = originalLabel;
+        }
+      }
+      async function refreshRoleAssignments() {
+        if (!assignedRolesList || !assignedNetworkLabel) return;
+        const network = window.getSelectedNetwork?.() ?? "sepolia";
+        assignedNetworkLabel.textContent = `Network: ${network}`;
+        try {
+          const response = await fetch("js/role-assignments.json", { cache: "no-store" });
+          if (!response.ok) throw new Error("Failed to load assignments");
+          const payload = await response.json();
+          const snapshot = payload?.[network] ?? {};
+          assignedRolesList.innerHTML = "";
+          const keys = ["admin", "producer", "authority", "distributor", "retailer"];
+          let foundAny = false;
+          keys.forEach((key) => {
+            const li = document.createElement("li");
+            li.innerHTML = `
+              <span class="role-name">${friendlyName(key)}</span>
+              <span class="role-address">${snapshot?.[key] ?? '<span class="muted-text">Not assigned</span>'}</span>
+            `;
+            assignedRolesList.appendChild(li);
+            if (snapshot?.[key]) foundAny = true;
+          });
+          if (!foundAny) {
+            assignedRolesList.innerHTML = `<li class="role-placeholder">Run <span class="muted-text">npx hardhat run scripts/deploy.ts --network ${network}</span> to cache role assignments.</li>`;
+          }
+        } catch (error) {
+          assignedRolesList.innerHTML = `<li class="role-placeholder">Unable to load saved assignments.</li>`;
+        }
+      }
+      consumerGoBtn?.addEventListener("click", async () => {
+        const raw = consumerInput?.value.trim();
+        if (!raw) {
+          displayStatus("Please enter a batch ID or scan a QR code.", "error");
+          return;
+        }
+
+        // Allow users to paste a full tracker URL too.
+        const maybeUrl = parseTrackPayload(raw);
+        if (maybeUrl?.targetUrl) {
+          displayStatus("🧾 Opening consumer tracker...", "success");
+          window.location.href = maybeUrl.targetUrl;
+          return;
+        }
+
+        const batchId = raw;
+        displayStatus("🧾 Opening consumer tracker...", "success");
+        try {
+          const targetUrl = await window.buildTrackUrl(batchId, await window.getContractAddress());
+          window.location.href = targetUrl;
+        } catch (error) {
+          displayStatus("❌ Unable to open tracker. " + (error?.message ?? ""), "error");
         }
       });
-    }
+      connectWalletBtn?.addEventListener("click", async () => {
+        displayStatus("🦊 Attaching wallet...", "success");
+        try {
+          const info = await window.connectWallet(statusTarget, { forcePrompt: true });
+          if (!info?.address) return;
 
-    // --- Carousel Events ---
-    document.getElementById('prevBtn').onclick = () => move(-1);
-    document.getElementById('nextBtn').onclick = () => move(1);
+          const walletTextEl = document.getElementById("walletText");
+          if (walletTextEl) walletTextEl.textContent = shortAddress(String(info.address));
+          displayStatus(`🦊 Connected as ${shortAddress(String(info.address))}`, "success");
+        } catch (error) {
+          displayStatus("❌ Wallet connect failed. " + (error?.message ?? ""), "error");
+        }
+      });
 
-    carousel.addEventListener('scroll', () => {
-      updateActiveState();
-      if (!isDragging) {
-        clearTimeout(snapTimer);
-        normalizeScroll(); 
-        snapTimer = setTimeout(snapToNearest, 150);
+      disconnectWalletBtn?.addEventListener("click", async () => {
+        displayStatus("Disconnecting wallet...", "success");
+        try {
+          await window.disconnectWallet(statusTarget);
+          const walletTextEl = document.getElementById("walletText");
+          if (walletTextEl) walletTextEl.textContent = "Connect Wallet";
+        } catch (error) {
+          displayStatus("❌ Disconnect failed. " + (error?.message ?? ""), "error");
+        }
+      });
+      let qrScanner;
+      let qrStartPromise = null;
+      let qrStopPromise = null;
+
+      function ensureQrScanner() {
+        if (qrScanner) return qrScanner;
+        if (typeof Html5Qrcode !== "function") {
+          displayStatus("QR scanning library failed to load.", "error");
+          return null;
+        }
+        qrScanner = new Html5Qrcode("qrReader");
+        return qrScanner;
       }
-    });
 
-    const startDrag = (e) => {
-      isDragging = true;
-      startX = e.pageX || e.touches[0].pageX;
-      startScrollLeft = carousel.scrollLeft;
-      carousel.style.cursor = 'grabbing';
-      clearTimeout(snapTimer);
-    };
+      async function stopQrScanner() {
+        // Hide immediately so the UI always closes even if stop() is slow.
+        qrModal?.classList.add("hidden");
 
-    const doDrag = (e) => {
-      if (!isDragging) return;
-      e.preventDefault();
-      const x = e.pageX || e.touches[0].pageX;
-      const walk = (x - startX) * 1.5;
-      carousel.scrollLeft = startScrollLeft - walk;
-    };
+        if (qrStopPromise) return qrStopPromise;
 
-    const stopDrag = () => {
-      if (!isDragging) return;
-      isDragging = false;
-      carousel.style.cursor = 'grab';
-      snapToNearest();
-    };
+        qrStopPromise = (async () => {
+          const scanner = qrScanner;
+          if (!scanner) return;
 
-    carousel.addEventListener('mousedown', startDrag);
-    carousel.addEventListener('mousemove', doDrag);
-    carousel.addEventListener('mouseup', stopDrag);
-    carousel.addEventListener('mouseleave', stopDrag);
+          // If start is still in-flight, wait for it to settle.
+          if (qrStartPromise) {
+            try {
+              await qrStartPromise;
+            } catch {
+              // ignore
+            }
+          }
 
-    carousel.addEventListener('touchstart', startDrag);
-    carousel.addEventListener('touchmove', doDrag);
-    carousel.addEventListener('touchend', stopDrag);
+          try {
+            await scanner.stop();
+          } catch {
+            // ignore
+          }
 
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'ArrowLeft') move(-1);
-      if (e.key === 'ArrowRight') move(1);
-    });
+          try {
+            await scanner.clear();
+          } catch {
+            // ignore
+          }
 
-    window.addEventListener('resize', () => {
+          if (qrScanner === scanner) qrScanner = null;
+        })().finally(() => {
+          qrStopPromise = null;
+        });
+
+        return qrStopPromise;
+      }
+
+      function parseTrackPayload(text) {
+        const raw = String(text ?? "").trim();
+        if (!raw) return null;
+
+        // Case A: QR encodes a full URL (recommended)
+        try {
+          const url = new URL(raw);
+          const batchId = url.searchParams.get("batchId") || "";
+          const contract = url.searchParams.get("contract") || "";
+          const network = url.searchParams.get("network") || "";
+          const hasAny = Boolean(batchId || contract || network);
+          if (hasAny) {
+            return {
+              type: "url",
+              targetUrl: url.toString(),
+              batchId,
+              contract,
+              network,
+            };
+          }
+        } catch {
+          // not a URL
+        }
+
+        // Case B: QR encodes just the batchId
+        return {
+          type: "batchId",
+          batchId: raw,
+        };
+      }
+
+      async function handleQrDecoded(decodedText) {
+        const payload = parseTrackPayload(decodedText);
+        if (!payload) {
+          displayStatus("❌ QR content is empty.", "error");
+          return;
+        }
+
+        // If QR contains a full tracker URL, go there directly.
+        if (payload.type === "url" && payload.targetUrl) {
+          displayStatus("✅ QR scanned. Opening batch details...", "success");
+          await stopQrScanner();
+          window.location.href = payload.targetUrl;
+          return;
+        }
+
+        // Otherwise treat it as a batchId and build the tracker URL.
+        if (payload.type === "batchId" && payload.batchId) {
+          if (consumerInput) consumerInput.value = payload.batchId;
+          displayStatus("✅ QR scanned. Opening batch details...", "success");
+          try {
+            const targetUrl = await window.buildTrackUrl(payload.batchId, await window.getContractAddress());
+            await stopQrScanner();
+            window.location.href = targetUrl;
+          } catch (error) {
+            displayStatus("❌ Unable to open tracker. " + (error?.message ?? ""), "error");
+          }
+        }
+      }
+
+      async function startQrScanner() {
+        if (qrStartPromise) return;
+
+        // Always show the modal immediately so the user sees something happen,
+        // even if camera permission fails or the library can't load.
+        qrModal?.classList.remove("hidden");
+
+        const scanner = ensureQrScanner();
+        if (!scanner) return;
+
+        displayStatus("📷 Starting camera scanner...", "success");
+        qrStartPromise = (async () => {
+          await scanner.start(
+            { facingMode: { ideal: "environment" } },
+            { fps: 10, qrbox: 250 },
+            (decoded) => {
+              handleQrDecoded(decoded);
+            },
+            () => {
+              // intentionally empty
+            },
+          );
+        })()
+          .catch((error) => {
+            // Keep the modal open so the user can read the error and/or use "Scan from Library".
+            displayStatus(
+              "❌ Unable to access camera. " +
+                (error?.message ?? "") +
+                " (Tip: on phones, camera often requires HTTPS. You can use Scan from Library.)",
+              "error",
+            );
+          })
+          .finally(() => {
+            qrStartPromise = null;
+          });
+      }
+
+      async function scanQrFromFile(file) {
+        const scanner = ensureQrScanner();
+        if (!scanner) return;
+
+        qrModal?.classList.remove("hidden");
+
+        // If the camera is currently running, stop it before scanning a file.
+        try {
+          await scanner.stop();
+        } catch {
+          // ignore
+        }
+
+        try {
+          const result = await scanner.scanFile(file, true);
+          const decodedText = typeof result === "string" ? result : String(result ?? "");
+          await handleQrDecoded(decodedText);
+        } catch (error) {
+          displayStatus("❌ Could not read QR from that image. Try a clearer photo.", "error");
+        } finally {
+          // allow picking the same file again
+          if (qrFileInput) qrFileInput.value = "";
+        }
+      }
+      scanQrBtn?.addEventListener("click", startQrScanner);
+      // File picker is opened by clicking the <label for="qrFileInput">.
+      // (More reliable on mobile than programmatic input.click().)
+      scanFileLabel?.addEventListener("click", () => {
+        // no-op; keep for clarity / future hooks
+      });
+      qrFileInput?.addEventListener("change", async (event) => {
+        const input = event.target;
+        const file = input?.files?.[0];
+        if (!file) return;
+        await scanQrFromFile(file);
+      });
+      qrModal?.addEventListener("click", (event) => {
+        if (event.target === qrModal) {
+          stopQrScanner();
+        }
+      });
+      qrModalClose?.addEventListener("click", stopQrScanner);
+      const baseRoles = interactiveRoles;
+      const loopRoles = Array.from({ length: 5 }, () => baseRoles).flat();
+      let cardWidth = 0;
+      let isDragging = false;
+      let startX = 0;
+      let startScrollLeft = 0;
+      let snapTimer = null;
+      function renderCarousel() {
+        if (!hexTrack) return;
+        hexTrack.innerHTML = "";
+        loopRoles.forEach((role, idx) => {
+          const card = document.createElement("div");
+          card.className = "hex-card";
+          card.dataset.idx = idx;
+          card.innerHTML = `
+            <div class="hex-outline"></div>
+            <div class="hex-inner">
+              <div class="hex-icon">${role.icon}</div>
+              <div class="hex-title">${role.title}</div>
+              <div class="hex-text">${role.description}</div>
+              <p class="hex-note">${role.note}</p>
+              <button type="button" class="hex-cta">${role.cta}</button>
+            </div>
+          `;
+          const btn = card.querySelector(".hex-cta");
+          btn?.addEventListener("click", () => handleRoleSelection(role, btn));
+          hexTrack.appendChild(card);
+        });
+      }
+      function measure() {
+        if (!hexTrack) return;
+        const card = hexTrack.querySelector(".hex-card");
+        if (card) {
+          cardWidth = card.offsetWidth + 16;
+        }
+      }
+      function updateActiveState() {
+        if (!carousel || !cardWidth) return;
+        const centerLine = carousel.scrollLeft + (carousel.clientWidth / 2);
+        const cards = Array.from(hexTrack?.children ?? []);
+        let activeIdx = 0;
+        let minDist = Infinity;
+        cards.forEach((card, i) => {
+          const cardCenter = (i * cardWidth) + (cardWidth / 2);
+          const dist = Math.abs(centerLine - cardCenter);
+          if (dist < minDist) {
+            minDist = dist;
+            activeIdx = i;
+          }
+        });
+        cards.forEach((card, i) => {
+          if (i === activeIdx) card.classList.add("center");
+          else card.classList.remove("center");
+        });
+        const currentRole = baseRoles[activeIdx % baseRoles.length];
+        if (currentRole && currentTitle && currentText) {
+          currentTitle.textContent = currentRole.title;
+          currentText.textContent = currentRole.description;
+        }
+      }
+      function normalizeScroll() {
+        if (!carousel || !cardWidth) return;
+        const totalCards = loopRoles.length;
+        const currentIndex = Math.round(carousel.scrollLeft / cardWidth);
+        if (currentIndex < baseRoles.length) {
+          carousel.scrollTo({
+            left: carousel.scrollLeft + (baseRoles.length * cardWidth),
+            behavior: "auto",
+          });
+        } else if (currentIndex > totalCards - baseRoles.length) {
+          carousel.scrollTo({
+            left: carousel.scrollLeft - (baseRoles.length * cardWidth),
+            behavior: "auto",
+          });
+        }
+      }
+      function snapToNearest() {
+        if (!carousel || !cardWidth || isDragging) return;
+        const center = carousel.scrollLeft + (carousel.clientWidth / 2);
+        const rawIndex = (center / cardWidth) - 0.5;
+        const targetIndex = Math.round(rawIndex);
+        const targetScroll = (targetIndex * cardWidth) + (cardWidth / 2) - (carousel.clientWidth / 2);
+        carousel.scrollTo({ left: targetScroll, behavior: "smooth" });
+      }
+      function move(direction) {
+        if (!carousel || !cardWidth) return;
+        const center = carousel.scrollLeft + (carousel.clientWidth / 2);
+        const currentIndex = Math.round((center / cardWidth) - 0.5);
+        const targetIndex = currentIndex + direction;
+        const targetScroll = (targetIndex * cardWidth) + (cardWidth / 2) - (carousel.clientWidth / 2);
+        carousel.scrollTo({ left: targetScroll, behavior: "smooth" });
+      }
+      const startDrag = (e) => {
+        if (!carousel) return;
+        isDragging = true;
+        startX = e.pageX || e.touches[0].pageX;
+        startScrollLeft = carousel.scrollLeft;
+        carousel.style.cursor = "grabbing";
+        clearTimeout(snapTimer);
+      };
+      const doDrag = (e) => {
+        if (!isDragging || !carousel) return;
+        e.preventDefault();
+        const x = e.pageX || e.touches[0].pageX;
+        const walk = (x - startX) * 1.5;
+        carousel.scrollLeft = startScrollLeft - walk;
+      };
+      const stopDrag = () => {
+        if (!isDragging || !carousel) return;
+        isDragging = false;
+        carousel.style.cursor = "grab";
+        snapToNearest();
+      };
+      renderCarousel();
       measure();
-      snapToNearest();
-    });
-
-    window.addEventListener('load', () => {
-      measure();
-      const startIdx = roles.length * 2; 
-      const startPos = (startIdx * cardWidth) + (cardWidth / 2) - (carousel.clientWidth / 2);
-      carousel.scrollTo({ left: startPos, behavior: 'auto' });
-      updateActiveState();
-    });
-
-    document.addEventListener('DOMContentLoaded', () => {
-      initContractAddressUi();
-    });
+      prevBtn?.addEventListener("click", () => move(-1));
+      nextBtn?.addEventListener("click", () => move(1));
+      carousel?.addEventListener("scroll", () => {
+        updateActiveState();
+        if (!isDragging) {
+          clearTimeout(snapTimer);
+          normalizeScroll();
+          snapTimer = setTimeout(snapToNearest, 150);
+        }
+      });
+      carousel?.addEventListener("mousedown", startDrag);
+      carousel?.addEventListener("mousemove", doDrag);
+      carousel?.addEventListener("mouseup", stopDrag);
+      carousel?.addEventListener("mouseleave", stopDrag);
+      carousel?.addEventListener("touchstart", startDrag);
+      carousel?.addEventListener("touchmove", doDrag);
+      carousel?.addEventListener("touchend", stopDrag);
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowLeft") move(-1);
+        if (e.key === "ArrowRight") move(1);
+      });
+      window.addEventListener("resize", () => {
+        measure();
+        snapToNearest();
+      });
+      window.addEventListener("load", () => {
+        measure();
+        if (carousel && cardWidth) {
+          const startIdx = baseRoles.length * 2;
+          const startPos = (startIdx * cardWidth) + (cardWidth / 2) - (carousel.clientWidth / 2);
+          carousel.scrollTo({ left: startPos, behavior: "auto" });
+          updateActiveState();
+        }
+      });
+      async function initContractAddressUi() {
+        const contractAddressInput = document.getElementById("contractAddressInput");
+        const setContractBtn = document.getElementById("setContractBtn");
+        const chainPill = document.getElementById("chainPill");
+        if (!contractAddressInput || !setContractBtn) return;
+        try {
+          const addr = await window.getContractAddress();
+          contractAddressInput.value = addr;
+          if (chainPill) chainPill.title = `Contract: ${addr}`;
+        } catch {
+          // ignore
+        }
+        setContractBtn.addEventListener("click", () => {
+          try {
+            const saved = window.setContractAddress(contractAddressInput.value);
+            if (chainPill) chainPill.title = `Contract: ${saved}`;
+            const prev = setContractBtn.textContent;
+            setContractBtn.textContent = "Saved";
+            setTimeout(() => {
+              setContractBtn.textContent = prev || "Set";
+            }, 900);
+          } catch (e) {
+            alert(e?.message || String(e));
+          }
+        });
+      }
+      document.addEventListener("DOMContentLoaded", () => {
+        initContractAddressUi();
+      });
+      refreshRoleAssignments();
+    })();
   </script>
 </body>
 </html>

@@ -1,9 +1,27 @@
+import "dotenv/config";
+
+import path from "path";
+import { fileURLToPath } from "url";
+
 import hardhatEthers from "@nomicfoundation/hardhat-ethers";
-import hardhatToolboxMochaEthersPlugin from "@nomicfoundation/hardhat-toolbox-mocha-ethers";
+import hardhatEthersChai from "@nomicfoundation/hardhat-ethers-chai-matchers";
+import hardhatMocha from "@nomicfoundation/hardhat-mocha";
 import { configVariable, defineConfig } from "hardhat/config";
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+function envOrConfigVar(name: string) {
+  return process.env[name] ?? process.env[`HARDHAT_VAR_${name}`] ?? configVariable(name);
+}
+
 export default defineConfig({
-  plugins: [hardhatEthers, hardhatToolboxMochaEthersPlugin],
+  plugins: [hardhatEthers, hardhatEthersChai, hardhatMocha],
+  test: {
+    mocha: {
+      timeout: 40000,
+    },
+  },
   solidity: {
     profiles: {
       default: {
@@ -21,19 +39,24 @@ export default defineConfig({
     },
   },
   networks: {
-    hardhatMainnet: {
+    hardhat: {
       type: "edr-simulated",
       chainType: "l1",
+      timeout: 40000,
+      allowUnlimitedContractSize: true,
+      mining: {
+        auto: true,
+        interval: 1000,
+      },
     },
-    hardhatOp: {
-      type: "edr-simulated",
-      chainType: "op",
+    localhost: {
+      type: "http",
+      url: "http://127.0.0.1:8545",
     },
     sepolia: {
       type: "http",
-      chainType: "l1",
-      url: configVariable("SEPOLIA_RPC_URL"),
-      accounts: [configVariable("SEPOLIA_PRIVATE_KEY")],
+      url: envOrConfigVar("SEPOLIA_RPC_URL"),
+      accounts: [envOrConfigVar("SEPOLIA_PRIVATE_KEY")],
     },
   },
 });

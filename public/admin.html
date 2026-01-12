@@ -120,6 +120,7 @@
       <p class="margin-top">Connected Account:</p>
       <div class="address-display" id="connectedAccount">Not connected</div>
       <button onclick="connectWallet('connectionStatus')">Connect Wallet</button>
+      <button type="button" onclick="disconnectWallet('connectionStatus')">Disconnect</button>
       <div class="status" id="connectionStatus"></div>
     </div>
 
@@ -167,6 +168,7 @@
   <script src="js/contract-address.js"></script>
   <script src="js/config.js"></script>
   <script src="js/abi.js"></script>
+  <script src="js/web3.js"></script>
   <script>
     let contract;
     let signer;
@@ -178,26 +180,20 @@
     }
 
     async function connectWallet(statusTarget = 'connectionStatus') {
-      if (!window.ethereum) {
-        showStatus('❌ MetaMask not installed. Please install MetaMask extension.', 'error', statusTarget);
-        return false;
-      }
       try {
-        provider = provider || new ethers.BrowserProvider(window.ethereum);
-        
-        // Check if already connected without prompting
-        const existingAccounts = await window.ethereum.request({ method: 'eth_accounts' });
-        let accounts = existingAccounts;
-        
-        // Only request if not already connected
-        if (accounts.length === 0) {
-          accounts = await provider.send('eth_requestAccounts', []);
+        contract = await window.getWriteContract(statusTarget);
+        if (!contract) return false;
+
+        try {
+          const addr = await contract.runner.getAddress();
+          document.getElementById('connectedAccount').textContent = addr;
+        } catch {
+          // ignore
         }
-        
-        signer = await provider.getSigner();
-        contract = new ethers.Contract(await getContractAddress(), CONTRACT_ABI, signer);
-        document.getElementById('connectedAccount').textContent = accounts[0];
-        showStatus('✅ Wallet connected successfully!', 'success', statusTarget);
+
+        const network = typeof window.getSelectedNetwork === 'function' ? window.getSelectedNetwork() : 'sepolia';
+        const label = network === 'localhost' ? 'Localhost' : 'Sepolia';
+        showStatus(`✅ Wallet connected (${label})`, 'success', statusTarget);
         return true;
       } catch (error) {
         if (error.code === 4001) {
@@ -205,6 +201,20 @@
         } else {
           showStatus('❌ Error: ' + error.message, 'error', statusTarget);
         }
+        return false;
+      }
+    }
+
+    async function disconnectWallet(statusTarget = 'connectionStatus') {
+      try {
+        contract = null;
+        signer = null;
+        provider = null;
+        document.getElementById('connectedAccount').textContent = 'Not connected';
+        await window.disconnectWallet(statusTarget);
+        return true;
+      } catch (error) {
+        showStatus('❌ Disconnect failed. ' + (error?.message ?? ''), 'error', statusTarget);
         return false;
       }
     }
@@ -218,6 +228,22 @@
         return;
       }
       try {
+        // Helpful check: only the contract admin can grant roles.
+        try {
+          const admin = await contract.admin();
+          const signerAddress = await contract.runner.getAddress();
+          if (String(admin).toLowerCase() !== String(signerAddress).toLowerCase()) {
+            showStatus(
+              `❌ Only the Admin can grant roles. Admin is ${admin}. You are ${signerAddress}.`,
+              'error',
+              'producerStatus'
+            );
+            return;
+          }
+        } catch {
+          // ignore if we can't read admin/signer
+        }
+
         const tx = await contract.addProducer(address);
         showStatus('Transaction sent: ' + tx.hash, 'success', 'producerStatus');
         await tx.wait();
@@ -237,6 +263,21 @@
         return;
       }
       try {
+        try {
+          const admin = await contract.admin();
+          const signerAddress = await contract.runner.getAddress();
+          if (String(admin).toLowerCase() !== String(signerAddress).toLowerCase()) {
+            showStatus(
+              `❌ Only the Admin can grant roles. Admin is ${admin}. You are ${signerAddress}.`,
+              'error',
+              'authorityStatus'
+            );
+            return;
+          }
+        } catch {
+          // ignore
+        }
+
         const tx = await contract.addAuthority(address);
         showStatus('Transaction sent: ' + tx.hash, 'success', 'authorityStatus');
         await tx.wait();
@@ -256,6 +297,21 @@
         return;
       }
       try {
+        try {
+          const admin = await contract.admin();
+          const signerAddress = await contract.runner.getAddress();
+          if (String(admin).toLowerCase() !== String(signerAddress).toLowerCase()) {
+            showStatus(
+              `❌ Only the Admin can grant roles. Admin is ${admin}. You are ${signerAddress}.`,
+              'error',
+              'distributorStatus'
+            );
+            return;
+          }
+        } catch {
+          // ignore
+        }
+
         const tx = await contract.addDistributor(address);
         showStatus('Transaction sent: ' + tx.hash, 'success', 'distributorStatus');
         await tx.wait();
@@ -275,6 +331,21 @@
         return;
       }
       try {
+        try {
+          const admin = await contract.admin();
+          const signerAddress = await contract.runner.getAddress();
+          if (String(admin).toLowerCase() !== String(signerAddress).toLowerCase()) {
+            showStatus(
+              `❌ Only the Admin can grant roles. Admin is ${admin}. You are ${signerAddress}.`,
+              'error',
+              'retailerStatus'
+            );
+            return;
+          }
+        } catch {
+          // ignore
+        }
+
         const tx = await contract.addRetailer(address);
         showStatus('Transaction sent: ' + tx.hash, 'success', 'retailerStatus');
         await tx.wait();
@@ -291,10 +362,9 @@
       el.className = 'status ' + type;
     }
 
-    // Initialize when DOM is ready and prompt wallet connection
+    // Initialize when DOM is ready (do not auto-prompt MetaMask)
     document.addEventListener('DOMContentLoaded', () => {
       initPage();
-      connectWallet('connectionStatus');
     });
   </script>
 </body>
